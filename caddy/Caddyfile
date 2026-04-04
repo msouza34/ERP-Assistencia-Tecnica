@@ -42,10 +42,20 @@ https://{$API_DOMAIN} {
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
   }
+
+  @api_root path /
+  handle @api_root {
+    redir https://{$APP_DOMAIN}{uri} permanent
+  }
+
   import backend_proxy_secure
 }
 
-http://{$APP_DOMAIN}, http://{$API_DOMAIN} {
+https://www.{$APP_DOMAIN} {
+  redir https://{$APP_DOMAIN}{uri} permanent
+}
+
+http://{$APP_DOMAIN}, http://www.{$APP_DOMAIN}, http://{$API_DOMAIN} {
   redir https://{host}{uri} permanent
 }
 
