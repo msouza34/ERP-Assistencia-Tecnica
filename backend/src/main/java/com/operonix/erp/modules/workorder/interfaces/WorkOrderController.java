@@ -795,8 +795,10 @@ public class WorkOrderController {
         lines.add(new PdfLine("", false, 10f));
         lines.add(new PdfLine("Documento emitido em " + formatDateTime(LocalDateTime.now()) + ".", false, 10f));
 
-        try (PDDocument document = new PDDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream(); PdfRenderer renderer = new PdfRenderer(document)) {
-            renderer.writeLines(lines);
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            try (PdfRenderer renderer = new PdfRenderer(document)) {
+                renderer.writeLines(lines);
+            }
             document.save(output);
             return output.toByteArray();
         } catch (IOException ex) {
