@@ -31,13 +31,16 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
+import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -59,6 +62,9 @@ public class BudgetController {
     private static final float PDF_TOP_MARGIN = 56f;
     private static final float PDF_SIDE_MARGIN = 52f;
     private static final float PDF_BOTTOM_MARGIN = 48f;
+    private static final float PDF_HEADER_HEIGHT = 92f;
+    private static final float PDF_LOGO_MAX_WIDTH = 178f;
+    private static final float PDF_LOGO_MAX_HEIGHT = 58f;
 
     private final BudgetRepository budgetRepository;
     private final AuditService auditService;
@@ -326,7 +332,7 @@ public class BudgetController {
         lines.add(new PdfLine("Documento emitido em " + formatDateTime(LocalDateTime.now()) + ".", false, 10f));
 
         try (PDDocument document = new PDDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            try (PdfRenderer renderer = new PdfRenderer(document)) {
+            try (PdfRenderer renderer = new PdfRenderer(document, loadBrandLogoBytes())) {
                 renderer.writeLines(lines);
             }
             document.save(output);
@@ -336,6 +342,22 @@ public class BudgetController {
         }
     }
 
+
+    private byte[] loadBrandLogoBytes() {
+        ClassPathResource preferred = new ClassPathResource("branding/danicell-logo-doc.png");
+        ClassPathResource fallback = new ClassPathResource("branding/danicell-logo.jpg");
+
+        ClassPathResource selected = preferred.exists() ? preferred : fallback;
+        if (!selected.exists()) {
+            return null;
+        }
+
+        try {
+            return StreamUtils.copyToByteArray(selected.getInputStream());
+        } catch (IOException ex) {
+            return null;
+        }
+    }
     private String normalizePhone(String rawPhone) {
         if (!StringUtils.hasText(rawPhone)) {
             return null;
@@ -415,12 +437,15 @@ public class BudgetController {
     private final class PdfRenderer implements AutoCloseable {
 
         private final PDDocument document;
+        private final PDImageXObject logoImage;
         private PDPage page;
         private PDPageContentStream stream;
         private float cursorY;
+        private int pageNumber;
 
-        private PdfRenderer(PDDocument document) throws IOException {
+        private PdfRenderer(PDDocument document, byte[] logoBytes) throws IOException {
             this.document = document;
+            this.logoImage = toLogoImage(document, logoBytes);
             openNewPage();
         }
 
@@ -439,6 +464,7 @@ public class BudgetController {
             for (String chunk : chunks) {
                 ensureSpace(lineHeight);
                 stream.beginText();
+                stream.setNonStrokingColor(24, 30, 42);
                 stream.setFont(font, fontSize);
                 stream.newLineAtOffset(PDF_SIDE_MARGIN, cursorY);
                 stream.showText(sanitizePdfText(chunk));
@@ -458,7 +484,72 @@ public class BudgetController {
             page = new PDPage(PDRectangle.A4);
             document.addPage(page);
             stream = new PDPageContentStream(document, page);
-            cursorY = page.getMediaBox().getHeight() - PDF_TOP_MARGIN;
+            pageNumber++;
+            drawPageHeader();
+            drawPageFooter();
+            cursorY = page.getMediaBox().getHeight() - PDF_TOP_MARGIN - PDF_HEADER_HEIGHT;
+        }
+
+        private void drawPageHeader() throws IOException {
+            float pageWidth = page.getMediaBox().getWidth();
+            float headerBottom = page.getMediaBox().getHeight() - PDF_TOP_MARGIN - PDF_HEADER_HEIGHT;
+            float headerWidth = pageWidth - (PDF_SIDE_MARGIN * 2f);
+
+            stream.setNonStrokingColor(14, 21, 34);
+            stream.addRect(PDF_SIDE_MARGIN, headerBottom, headerWidth, PDF_HEADER_HEIGHT);
+            stream.fill();
+
+            float textStartX = PDF_SIDE_MARGIN + 14f;
+            if (logoImage != null) {
+                float[] logoSize = fitWithin(logoImage.getWidth(), logoImage.getHeight(), PDF_LOGO_MAX_WIDTH, PDF_LOGO_MAX_HEIGHT);
+                float logoX = PDF_SIDE_MARGIN + 14f;
+                float logoY = headerBottom + (PDF_HEADER_HEIGHT - logoSize[1]) / 2f;
+                stream.drawImage(logoImage, logoX, logoY, logoSize[0], logoSize[1]);
+                textStartX = logoX + logoSize[0] + 14f;
+            }
+
+            stream.beginText();
+            stream.setNonStrokingColor(245, 248, 252);
+            stream.setFont(PDType1Font.HELVETICA_BOLD, 14f);
+            stream.newLineAtOffset(textStartX, headerBottom + PDF_HEADER_HEIGHT - 30f);
+            stream.showText("DaniCell Assistencia Tecnica");
+            stream.endText();
+
+            stream.beginText();
+            stream.setNonStrokingColor(214, 222, 233);
+            stream.setFont(PDType1Font.HELVETICA, 9.8f);
+            stream.newLineAtOffset(textStartX, headerBottom + PDF_HEADER_HEIGHT - 45f);
+            stream.showText("Orcamento tecnico com layout profissional para aprovacao de servico.");
+            stream.endText();
+        }
+
+        private void drawPageFooter() throws IOException {
+            stream.beginText();
+            stream.setNonStrokingColor(96, 104, 118);
+            stream.setFont(PDType1Font.HELVETICA_OBLIQUE, 8.8f);
+            stream.newLineAtOffset(PDF_SIDE_MARGIN, PDF_BOTTOM_MARGIN - 20f);
+            stream.showText("Emitido em " + sanitizePdfText(formatDateTime(LocalDateTime.now())) + " | Pagina " + pageNumber);
+            stream.endText();
+        }
+
+        private PDImageXObject toLogoImage(PDDocument targetDocument, byte[] logoBytes) {
+            if (logoBytes == null || logoBytes.length == 0) {
+                return null;
+            }
+            try {
+                return PDImageXObject.createFromByteArray(targetDocument, logoBytes, "danicell-logo");
+            } catch (IOException ex) {
+                return null;
+            }
+        }
+
+        private float[] fitWithin(float sourceWidth, float sourceHeight, float maxWidth, float maxHeight) {
+            if (sourceWidth <= 0f || sourceHeight <= 0f) {
+                return new float[] { maxWidth, maxHeight };
+            }
+
+            float ratio = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
+            return new float[] { sourceWidth * ratio, sourceHeight * ratio };
         }
 
         @Override
@@ -469,7 +560,6 @@ public class BudgetController {
             }
         }
     }
-
     private record PdfLine(String text, boolean bold, float fontSize) {
     }
 

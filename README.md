@@ -1,6 +1,9 @@
 # Sistema Danicell - ERP de Assistencia Tecnica
 
 Sistema para assistencia tecnica com foco em ordens de servico, orcamentos, estoque, financeiro, clientes, auditoria e dashboard operacional, com emissao de O.S em PDF e envio para WhatsApp.
+<p align="center">
+  <img src="docs/danicell-logo-doc.png" alt="Logo DaniCell Assistencia Tecnica" width="360" />
+</p>
 
 ## Descricao do projeto
 
@@ -129,6 +132,8 @@ chmod +x deploy/*.sh
 
 ## O.S em PDF e WhatsApp
 
+- Todos os PDFs (O.S e Orcamentos) incluem cabecalho institucional com a logo DaniCell, com enquadramento automatico sem distorcao.
+- O layout PDF foi refinado com identidade visual padronizada e rodape profissional com data/hora de emissao e paginacao.
 - Botao **Baixar PDF** na tela de Ordens de Servico gera o documento da O.S em `application/pdf`.
 - Botao **Baixar PDF** na tela de Orcamentos gera o documento comercial do orcamento em `application/pdf`.
 - O compartilhamento para WhatsApp (em O.S e Orcamentos) tenta enviar o PDF diretamente quando o navegador suporta compartilhamento de arquivo.
