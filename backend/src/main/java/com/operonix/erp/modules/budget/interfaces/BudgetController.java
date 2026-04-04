@@ -9,13 +9,33 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,6 +54,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class BudgetController {
 
     private static final Set<BudgetStatus> PIPELINE_STATUSES = Set.of(BudgetStatus.RASCUNHO, BudgetStatus.ENVIADO);
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final float PDF_TOP_MARGIN = 56f;
+    private static final float PDF_SIDE_MARGIN = 52f;
+    private static final float PDF_BOTTOM_MARGIN = 48f;
 
     private final BudgetRepository budgetRepository;
     private final AuditService auditService;
@@ -201,6 +226,253 @@ public class BudgetController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/{id}/document/pdf")
+    public ResponseEntity<ByteArrayResource> documentPdf(
+        @PathVariable Long id,
+        @RequestParam(name = "download", defaultValue = "true") boolean download
+    ) {
+        Budget budget = requireBudget(id);
+        byte[] content = generateBudgetPdf(budget);
+        String filename = safeFileName(budget.getBudgetNumber(), "orcamento") + ".pdf";
+
+        return fileResponse(content, MediaType.APPLICATION_PDF, filename, download);
+    }
+
+    @GetMapping("/{id}/whatsapp-link")
+    public ResponseEntity<Map<String, String>> whatsappLink(@PathVariable Long id) {
+        Budget budget = requireBudget(id);
+        String phone = normalizePhone(budget.getCustomerPhone());
+        if (phone == null) {
+            throw new IllegalArgumentException("Telefone do cliente nao informado no orcamento.");
+        }
+
+        String message = String.format(
+            Locale.ROOT,
+            "Ola %s! Orcamento %s atualizado:%nStatus: %s%nTotal: %s%nValidade: %s%nPDF do orcamento pronto para envio em anexo.",
+            budget.getCustomerName(),
+            budget.getBudgetNumber(),
+            formatEnum(budget.getStatus()),
+            formatCurrency(budget.getTotalAmount()),
+            formatDate(budget.getValidUntil())
+        );
+
+        String encoded = URLEncoder.encode(message, StandardCharsets.UTF_8);
+        String url = "https://wa.me/" + phone + "?text=" + encoded;
+        String pdfFileName = safeFileName(budget.getBudgetNumber(), "orcamento") + ".pdf";
+
+        return ResponseEntity.ok(Map.of("url", url, "message", message, "pdfFileName", pdfFileName));
+    }
+
+    private ResponseEntity<ByteArrayResource> fileResponse(
+        byte[] content,
+        MediaType mediaType,
+        String filename,
+        boolean download
+    ) {
+        ContentDisposition disposition = ContentDisposition
+            .builder(download ? "attachment" : "inline")
+            .filename(filename, StandardCharsets.UTF_8)
+            .build();
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+            .header("X-Content-Type-Options", "nosniff")
+            .contentType(mediaType)
+            .contentLength(content.length)
+            .body(new ByteArrayResource(content));
+    }
+
+    private byte[] generateBudgetPdf(Budget budget) {
+        List<PdfLine> lines = new ArrayList<>();
+
+        lines.add(new PdfLine("DaniCell Assistencia Tecnica", true, 16f));
+        lines.add(new PdfLine("Orcamento " + fallback(budget.getBudgetNumber(), "Sem numero"), true, 14f));
+        lines.add(new PdfLine("Documento comercial para aprovacao de servico.", false, 10.5f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Resumo", true, 12f));
+        lines.add(new PdfLine("Status: " + formatEnum(budget.getStatus()), false, 11f));
+        lines.add(new PdfLine("Criado em: " + formatDateTime(budget.getCreatedAt()), false, 11f));
+        lines.add(new PdfLine("Atualizado em: " + formatDateTime(budget.getUpdatedAt()), false, 11f));
+        lines.add(new PdfLine("Validade: " + formatDate(budget.getValidUntil()), false, 11f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Dados do cliente", true, 12f));
+        lines.add(new PdfLine("Cliente: " + normalizedText(budget.getCustomerName(), "Nao informado"), false, 11f));
+        lines.add(new PdfLine("Telefone: " + normalizedText(budget.getCustomerPhone(), "Nao informado"), false, 11f));
+        lines.add(new PdfLine("Equipamento: " + normalizedText(budget.getEquipment(), "Nao informado"), false, 11f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Valores", true, 12f));
+        lines.add(new PdfLine("Mao de obra: " + formatCurrency(budget.getLaborCost()), false, 11f));
+        lines.add(new PdfLine("Pecas: " + formatCurrency(budget.getPartsCost()), false, 11f));
+        lines.add(new PdfLine("Desconto: " + formatCurrency(budget.getDiscountAmount()), false, 11f));
+        lines.add(new PdfLine("Total: " + formatCurrency(budget.getTotalAmount()), true, 11.5f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Problema relatado", true, 12f));
+        lines.add(new PdfLine(normalizedText(budget.getProblemDescription(), "Nao informado"), false, 11f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Itens e servicos", true, 12f));
+        lines.add(new PdfLine(normalizedText(budget.getItemsDescription(), "Nao informado"), false, 11f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Observacoes", true, 12f));
+        lines.add(new PdfLine(normalizedText(budget.getNotes(), "Sem observacoes adicionais."), false, 11f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Assinatura do cliente: ________________________________", false, 10.5f));
+        lines.add(new PdfLine("Documento emitido em " + formatDateTime(LocalDateTime.now()) + ".", false, 10f));
+
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            try (PdfRenderer renderer = new PdfRenderer(document)) {
+                renderer.writeLines(lines);
+            }
+            document.save(output);
+            return output.toByteArray();
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Falha ao gerar PDF do orcamento.");
+        }
+    }
+
+    private String normalizePhone(String rawPhone) {
+        if (!StringUtils.hasText(rawPhone)) {
+            return null;
+        }
+
+        String digits = rawPhone.replaceAll("\\D", "");
+        if (digits.isBlank()) {
+            return null;
+        }
+
+        if (digits.length() == 10 || digits.length() == 11) {
+            return "55" + digits;
+        }
+
+        return digits;
+    }
+
+    private String safeFileName(String value, String fallback) {
+        if (!StringUtils.hasText(value)) {
+            return fallback;
+        }
+
+        return value.replaceAll("[\\\\/:*?\"<>|\\r\\n]", "_");
+    }
+
+    private String normalizedText(String value, String fallbackValue) {
+        String base = StringUtils.hasText(value) ? value.trim() : fallbackValue;
+        return base.replace("\r", "").replace("\t", " ");
+    }
+
+    private String sanitizePdfText(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replaceAll("[^\\x20-\\x7E\\u00A0-\\u00FF]", "?");
+    }
+
+    private List<String> wrapPdfText(String value, PDFont font, float fontSize, float maxWidth) throws IOException {
+        List<String> wrapped = new ArrayList<>();
+        String[] paragraphs = value.replace("\r", "").split("\n", -1);
+
+        for (String paragraph : paragraphs) {
+            String normalized = paragraph.trim();
+            if (normalized.isEmpty()) {
+                wrapped.add("");
+                continue;
+            }
+
+            StringBuilder current = new StringBuilder();
+            for (String word : normalized.split("\\s+")) {
+                String candidate = current.length() == 0 ? word : current + " " + word;
+                float width = font.getStringWidth(candidate) / 1000f * fontSize;
+
+                if (width <= maxWidth || current.length() == 0) {
+                    current.setLength(0);
+                    current.append(candidate);
+                    continue;
+                }
+
+                wrapped.add(current.toString());
+                current.setLength(0);
+                current.append(word);
+            }
+
+            if (current.length() > 0) {
+                wrapped.add(current.toString());
+            }
+        }
+
+        if (wrapped.isEmpty()) {
+            wrapped.add("");
+        }
+
+        return wrapped;
+    }
+
+    private final class PdfRenderer implements AutoCloseable {
+
+        private final PDDocument document;
+        private PDPage page;
+        private PDPageContentStream stream;
+        private float cursorY;
+
+        private PdfRenderer(PDDocument document) throws IOException {
+            this.document = document;
+            openNewPage();
+        }
+
+        private void writeLines(List<PdfLine> lines) throws IOException {
+            for (PdfLine line : lines) {
+                writeLine(line);
+            }
+        }
+
+        private void writeLine(PdfLine line) throws IOException {
+            PDFont font = line.bold() ? PDType1Font.HELVETICA_BOLD : PDType1Font.HELVETICA;
+            float fontSize = line.fontSize();
+            float lineHeight = Math.max(12f, fontSize * 1.35f);
+
+            List<String> chunks = wrapPdfText(line.text(), font, fontSize, page.getMediaBox().getWidth() - (PDF_SIDE_MARGIN * 2));
+            for (String chunk : chunks) {
+                ensureSpace(lineHeight);
+                stream.beginText();
+                stream.setFont(font, fontSize);
+                stream.newLineAtOffset(PDF_SIDE_MARGIN, cursorY);
+                stream.showText(sanitizePdfText(chunk));
+                stream.endText();
+                cursorY -= lineHeight;
+            }
+        }
+
+        private void ensureSpace(float requiredHeight) throws IOException {
+            if (cursorY - requiredHeight < PDF_BOTTOM_MARGIN) {
+                openNewPage();
+            }
+        }
+
+        private void openNewPage() throws IOException {
+            close();
+            page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+            stream = new PDPageContentStream(document, page);
+            cursorY = page.getMediaBox().getHeight() - PDF_TOP_MARGIN;
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (stream != null) {
+                stream.close();
+                stream = null;
+            }
+        }
+    }
+
+    private record PdfLine(String text, boolean bold, float fontSize) {
+    }
+
     private Budget requireBudget(Long id) {
         String tenantId = TenantContext.getTenantId();
         return budgetRepository.findByIdAndTenantId(id, tenantId)
@@ -254,6 +526,38 @@ public class BudgetController {
         );
     }
 
+    private String formatCurrency(BigDecimal value) {
+        if (value == null) {
+            return "Nao informado";
+        }
+
+        NumberFormat currency = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+        return currency.format(value);
+    }
+
+    private String formatDate(LocalDate value) {
+        if (value == null) {
+            return "Nao informado";
+        }
+        return DATE_FORMAT.format(value);
+    }
+
+    private String formatDateTime(LocalDateTime value) {
+        if (value == null) {
+            return "Nao informado";
+        }
+        return DATE_TIME_FORMAT.format(value);
+    }
+
+    private String formatEnum(Enum<?> value) {
+        if (value == null) {
+            return "Nao informado";
+        }
+
+        String normalized = value.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        return Character.toUpperCase(normalized.charAt(0)) + normalized.substring(1);
+    }
+
     private String normalizeSearch(String search) {
         if (!StringUtils.hasText(search)) {
             return null;
@@ -281,6 +585,10 @@ public class BudgetController {
 
     private BigDecimal nonNullMoney(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private String fallback(String value, String fallback) {
+        return StringUtils.hasText(value) ? value : fallback;
     }
 
     public record CreateBudgetRequest(

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiRequest } from "../api/client";
+import { apiRequest, downloadBlob } from "../api/client";
 
 const BUDGET_STATUSES = ["RASCUNHO", "ENVIADO", "APROVADO", "REPROVADO", "EXPIRADO"];
 
@@ -88,6 +88,12 @@ function statusLabel(status) {
 
 function statusClass(status) {
   return `status-${String(status || "RASCUNHO").toLowerCase()}`;
+}
+
+function safePdfFileName(budgetNumber, fallback = "orcamento") {
+  const base = String(budgetNumber || fallback).trim() || fallback;
+  const sanitized = base.replace(/[\\/:*?"<>|\r\n]+/g, "_");
+  return sanitized.toLowerCase().endsWith(".pdf") ? sanitized : `${sanitized}.pdf`;
 }
 
 export default function BudgetsPage({ token, tenantId }) {
@@ -310,6 +316,68 @@ export default function BudgetsPage({ token, tenantId }) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const downloadBudgetPdf = async (item) => {
+    try {
+      const blob = await apiRequest(`/api/v1/budgets/${item.id}/document/pdf?download=true`, {
+        token,
+        tenantId,
+        responseType: "blob"
+      });
+      downloadBlob(blob, safePdfFileName(item.budgetNumber, "orcamento"));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const shareOnWhatsApp = async (item) => {
+    setError("");
+    setSuccess("");
+
+    try {
+      const [data, pdfBlob] = await Promise.all([
+        apiRequest(`/api/v1/budgets/${item.id}/whatsapp-link`, {
+          token,
+          tenantId
+        }),
+        apiRequest(`/api/v1/budgets/${item.id}/document/pdf?download=true`, {
+          token,
+          tenantId,
+          responseType: "blob"
+        })
+      ]);
+
+      const fileName = safePdfFileName(data.pdfFileName || item.budgetNumber, "orcamento");
+      const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
+
+      let supportsFileShare = false;
+      try {
+        supportsFileShare =
+          typeof navigator !== "undefined"
+          && typeof navigator.share === "function"
+          && typeof navigator.canShare === "function"
+          && navigator.canShare({ files: [pdfFile] });
+      } catch {
+        supportsFileShare = false;
+      }
+
+      if (supportsFileShare) {
+        await navigator.share({
+          title: `Orcamento ${item.budgetNumber || ""}`.trim(),
+          text: data.message,
+          files: [pdfFile]
+        });
+        setSuccess("PDF do orcamento pronto para envio. Selecione o WhatsApp na tela de compartilhamento.");
+        return;
+      }
+
+      downloadBlob(pdfBlob, fileName);
+      window.open(data.url, "_blank", "noopener,noreferrer");
+      setSuccess("WhatsApp aberto e PDF baixado para anexar na conversa.");
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -554,6 +622,8 @@ export default function BudgetsPage({ token, tenantId }) {
 
                   <div className="os-actions">
                     <button type="button" onClick={() => openDetails(item)}>Editar</button>
+                    <button type="button" onClick={() => downloadBudgetPdf(item)}>Baixar PDF</button>
+                    <button type="button" onClick={() => shareOnWhatsApp(item)}>WhatsApp</button>
                     <button type="button" className="button-danger" onClick={() => deleteBudget(item)}>Excluir</button>
                   </div>
                 </div>
@@ -716,6 +786,8 @@ export default function BudgetsPage({ token, tenantId }) {
               </div>
 
               <div className="detail-actions">
+                <button type="button" onClick={() => downloadBudgetPdf(selectedItem)}>Baixar PDF</button>
+                <button type="button" onClick={() => shareOnWhatsApp(selectedItem)}>Enviar WhatsApp</button>
                 <button type="button" className="button-danger" onClick={() => deleteBudget(selectedItem)}>
                   Excluir orcamento
                 </button>

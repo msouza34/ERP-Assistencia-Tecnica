@@ -130,8 +130,10 @@ chmod +x deploy/*.sh
 ## O.S em PDF e WhatsApp
 
 - Botao **Baixar PDF** na tela de Ordens de Servico gera o documento da O.S em `application/pdf`.
-- O compartilhamento para WhatsApp tenta enviar o PDF diretamente (quando o navegador suporta compartilhamento de arquivo).
+- Botao **Baixar PDF** na tela de Orcamentos gera o documento comercial do orcamento em `application/pdf`.
+- O compartilhamento para WhatsApp (em O.S e Orcamentos) tenta enviar o PDF diretamente quando o navegador suporta compartilhamento de arquivo.
 - Em navegadores sem suporte, o sistema abre o WhatsApp com a mensagem e baixa o PDF para anexo manual.
+
 ## Variaveis de ambiente
 
 Base oficial: `.env.example`
