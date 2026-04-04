@@ -1,6 +1,6 @@
 # Sistema Danicell - ERP de Assistencia Tecnica
 
-Sistema para assistencia tecnica com foco em ordens de servico, estoque, financeiro, clientes, auditoria e dashboard operacional.
+Sistema para assistencia tecnica com foco em ordens de servico, orcamentos, estoque, financeiro, clientes, auditoria e dashboard operacional.
 
 ## Descricao do projeto
 
@@ -38,7 +38,12 @@ O projeto e composto por:
 |-- caddy/
 |   `-- Caddyfile
 |-- deploy/
+|   |-- migrations/
+|   |-- vps-backup.sh
 |   |-- vps-build.sh
+|   |-- vps-migrate.sh
+|   |-- vps-rollback.sh
+|   |-- vps-safe-update.sh
 |   |-- vps-up.sh
 |   `-- vps-restart.sh
 |-- docker-compose.yml
@@ -111,6 +116,7 @@ cp .env.example .env
 
 ```bash
 chmod +x deploy/*.sh
+./deploy/vps-migrate.sh
 ./deploy/vps-build.sh
 ./deploy/vps-up.sh
 ```
@@ -200,8 +206,9 @@ docker compose logs -f proxy
 Scripts adicionados para operacao segura em producao:
 
 - `deploy/vps-backup.sh`: cria snapshot local de rollback em `.deploy-backups/`.
+- `deploy/vps-migrate.sh`: aplica migracoes SQL idempotentes em `deploy/migrations/`.
 - `deploy/vps-rollback.sh`: volta para um snapshot anterior.
-- `deploy/vps-safe-update.sh`: faz backup + update com rollback automatico em caso de falha.
+- `deploy/vps-safe-update.sh`: faz backup + migracao + update com rollback automatico em caso de falha.
 
 Comando unico recomendado para atualizar em producao:
 
@@ -213,6 +220,7 @@ Comandos manuais:
 
 ```bash
 ./deploy/vps-backup.sh
+./deploy/vps-migrate.sh
 ./deploy/vps-rollback.sh latest
 ./deploy/vps-rollback.sh <BACKUP_ID> --with-db
 ```
@@ -264,3 +272,4 @@ Este repositorio foi preparado para:
 - Garantir documentacao operacional completa.
 
 Se houver historico antigo com segredos, faca rotacao imediata de todas as credenciais e limpe o historico Git antes de publicar.
+

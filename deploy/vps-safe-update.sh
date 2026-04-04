@@ -24,6 +24,7 @@ trap rollback_on_error ERR
 git fetch --all --tags
 git checkout -B main "${TARGET_REF}"
 
+"${SCRIPT_DIR}/vps-migrate.sh"
 "${SCRIPT_DIR}/vps-build.sh"
 "${SCRIPT_DIR}/vps-up.sh"
 
@@ -31,3 +32,4 @@ trap - ERR
 
 echo "Deploy concluido com sucesso."
 echo "Backup disponivel em .deploy-backups/${BACKUP_ID}"
+

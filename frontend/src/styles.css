@@ -2686,3 +2686,114 @@ body.density-comfortable {
 .finance-screen-pro .panel:not(.module-hero) .panel-head h5 {
   color: #0b1730 !important;
 }
+
+/* ===== Budget Module ===== */
+.budget-list {
+  max-height: 680px;
+  overflow: auto;
+}
+
+.budget-item {
+  display: grid;
+  gap: 0.7rem;
+  border-left: 4px solid #64748b;
+}
+
+.budget-item.status-rascunho {
+  border-left-color: #1d4ed8;
+}
+
+.budget-item.status-enviado {
+  border-left-color: #d97706;
+}
+
+.budget-item.status-aprovado {
+  border-left-color: #059669;
+}
+
+.budget-item.status-reprovado {
+  border-left-color: #b91c1c;
+}
+
+.budget-item.status-expirado {
+  border-left-color: #6b7280;
+}
+
+.budget-item-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.budget-item-top p {
+  margin: 0.2rem 0 0;
+  font-weight: 600;
+}
+
+.budget-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  margin-top: 0.35rem;
+}
+
+.budget-item-values {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: end;
+}
+
+.budget-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+  border: 1px solid transparent;
+}
+
+.budget-status.status-rascunho {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.18);
+  color: #1d4ed8;
+}
+
+.budget-status.status-enviado {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+}
+
+.budget-status.status-aprovado {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.18);
+  color: #047857;
+}
+
+.budget-status.status-reprovado {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.18);
+  color: #b91c1c;
+}
+
+.budget-status.status-expirado {
+  background: rgba(107, 114, 128, 0.14);
+  border-color: rgba(107, 114, 128, 0.2);
+  color: #4b5563;
+}
+
+@media (max-width: 960px) {
+  .budget-item-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .budget-item-values {
+    justify-items: start;
+  }
+}

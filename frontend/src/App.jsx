@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { login } from "./api/client";
 import AuditPage from "./pages/AuditPage";
+import BudgetsPage from "./pages/BudgetsPage";
 import CustomersPage from "./pages/CustomersPage";
 import DashboardPage from "./pages/DashboardPage";
 import FinancePage from "./pages/FinancePage";
@@ -38,33 +39,40 @@ const modules = [
     roles: ["ADMIN", "ATENDENTE", "TECNICO"]
   },
   {
+    id: "budgets",
+    label: "Orcamentos",
+    short: "05",
+    description: "Propostas tecnicas, aprovacoes e controle do valor estimado.",
+    roles: ["ADMIN", "ATENDENTE"]
+  },
+  {
     id: "finance",
     label: "Financeiro",
-    short: "05",
+    short: "06",
     description: "Recebimentos, pagamentos e visao do fluxo financeiro.",
     roles: ["ADMIN", "ATENDENTE"]
   },
   {
     id: "users",
     label: "Usuarios",
-    short: "06",
+    short: "07",
     description: "Perfis, acessos e permissoes da equipe operacional.",
     roles: ["ADMIN"]
   },
   {
     id: "audit",
     label: "Auditoria",
-    short: "07",
+    short: "08",
     description: "Rastreabilidade das acoes e seguranca administrativa.",
     roles: ["ADMIN"]
   }
 ];
-
 const moduleComponents = {
   dashboard: DashboardPage,
   workorders: WorkOrdersPage,
   customers: CustomersPage,
   inventory: InventoryPage,
+  budgets: BudgetsPage,
   finance: FinancePage,
   users: UsersPage,
   audit: AuditPage
@@ -321,5 +329,7 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
