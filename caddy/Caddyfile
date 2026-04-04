@@ -1,0 +1,64 @@
+{
+  email {$TLS_EMAIL}
+}
+
+(security_headers) {
+  header {
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+    Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+  }
+}
+
+(backend_proxy_secure) {
+  reverse_proxy backend:8080 {
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up X-Real-IP {http.request.remote.host}
+  }
+}
+
+https://{$APP_DOMAIN} {
+  encode zstd gzip
+  import security_headers
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  }
+
+  @api path /api/* /actuator/*
+  handle @api {
+    import backend_proxy_secure
+  }
+
+  handle {
+    reverse_proxy frontend:80
+  }
+}
+
+https://{$API_DOMAIN} {
+  encode zstd gzip
+  import security_headers
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  }
+  import backend_proxy_secure
+}
+
+http://{$APP_DOMAIN}, http://{$API_DOMAIN} {
+  redir https://{host}{uri} permanent
+}
+
+http://localhost, http://127.0.0.1 {
+  encode zstd gzip
+  import security_headers
+
+  @api path /api/* /actuator/*
+  handle @api {
+    import backend_proxy_secure
+  }
+
+  handle {
+    reverse_proxy frontend:80
+  }
+}
