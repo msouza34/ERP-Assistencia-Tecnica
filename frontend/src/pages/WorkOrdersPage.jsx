@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiRequest, downloadBlob, openBlobInNewTab } from "../api/client";
 
 const STATUSES = [
@@ -56,6 +56,12 @@ function actorLabel(value) {
   }
 
   return value;
+}
+
+function safePdfFileName(orderNumber, fallback = "ordem_servico") {
+  const base = String(orderNumber || fallback).trim() || fallback;
+  const sanitized = base.replace(/[\\/:*?"<>|\r\n]+/g, "_");
+  return sanitized.toLowerCase().endsWith(".pdf") ? sanitized : `${sanitized}.pdf`;
 }
 
 function eventTypeLabel(value) {
@@ -359,12 +365,12 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
 
   const downloadDocument = async (item) => {
     try {
-      const blob = await apiRequest(`/api/v1/work-orders/${item.id}/document?download=true`, {
+      const blob = await apiRequest(`/api/v1/work-orders/${item.id}/document/pdf?download=true`, {
         token,
         tenantId,
         responseType: "blob"
       });
-      downloadBlob(blob, `${item.orderNumber || "os"}.html`);
+      downloadBlob(blob, safePdfFileName(item.orderNumber, "ordem_servico"));
     } catch (err) {
       setError(err.message);
     }
@@ -397,12 +403,49 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
   };
 
   const shareOnWhatsApp = async (item) => {
+    setError("");
+    setSuccess("");
+
     try {
-      const data = await apiRequest(`/api/v1/work-orders/${item.id}/whatsapp-link`, {
-        token,
-        tenantId
-      });
+      const [data, pdfBlob] = await Promise.all([
+        apiRequest(`/api/v1/work-orders/${item.id}/whatsapp-link`, {
+          token,
+          tenantId
+        }),
+        apiRequest(`/api/v1/work-orders/${item.id}/document/pdf?download=true`, {
+          token,
+          tenantId,
+          responseType: "blob"
+        })
+      ]);
+
+      const fileName = safePdfFileName(data.pdfFileName || item.orderNumber, "ordem_servico");
+      const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
+
+      let supportsFileShare = false;
+      try {
+        supportsFileShare =
+          typeof navigator !== "undefined"
+          && typeof navigator.share === "function"
+          && typeof navigator.canShare === "function"
+          && navigator.canShare({ files: [pdfFile] });
+      } catch {
+        supportsFileShare = false;
+      }
+
+      if (supportsFileShare) {
+        await navigator.share({
+          title: `OS ${item.orderNumber || ""}`.trim(),
+          text: data.message,
+          files: [pdfFile]
+        });
+        setSuccess("PDF da OS pronto para envio. Selecione o WhatsApp na tela de compartilhamento.");
+        return;
+      }
+
+      downloadBlob(pdfBlob, fileName);
       window.open(data.url, "_blank", "noopener,noreferrer");
+      setSuccess("WhatsApp aberto e PDF baixado para anexar na conversa.");
     } catch (err) {
       setError(err.message);
     }
@@ -705,7 +748,7 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
                   <div className="os-actions os-actions-tight">
                     <button type="button" onClick={() => openDetails(item)}>Detalhes</button>
                     <button type="button" onClick={() => viewDocument(item)}>Visualizar OS</button>
-                    <button type="button" onClick={() => downloadDocument(item)}>Baixar OS</button>
+                    <button type="button" onClick={() => downloadDocument(item)}>Baixar PDF</button>
                     {item.hasAttachment && <button type="button" onClick={() => viewAttachment(item)}>Visualizar anexo</button>}
                     {item.hasAttachment && <button type="button" onClick={() => downloadAttachment(item)}>Baixar anexo</button>}
                     <button type="button" onClick={() => shareOnWhatsApp(item)}>WhatsApp</button>
@@ -842,7 +885,7 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
 
               <div className="detail-actions">
                 <button type="button" onClick={() => viewDocument(selectedOrder)}>Visualizar OS</button>
-                <button type="button" onClick={() => downloadDocument(selectedOrder)}>Baixar OS</button>
+                <button type="button" onClick={() => downloadDocument(selectedOrder)}>Baixar PDF</button>
                 {selectedOrder.hasAttachment && (
                   <button type="button" onClick={() => viewAttachment(selectedOrder)}>Visualizar anexo</button>
                 )}

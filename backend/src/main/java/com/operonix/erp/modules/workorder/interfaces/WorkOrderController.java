@@ -13,6 +13,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URLEncoder;
@@ -21,6 +22,7 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,6 +31,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.ContentDisposition;
@@ -65,6 +73,9 @@ public class WorkOrderController {
     );
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final float PDF_TOP_MARGIN = 56f;
+    private static final float PDF_SIDE_MARGIN = 52f;
+    private static final float PDF_BOTTOM_MARGIN = 48f;
 
     private final WorkOrderRepository workOrderRepository;
     private final WorkOrderTimelineEventRepository timelineEventRepository;
@@ -328,6 +339,18 @@ public class WorkOrderController {
 
         return fileResponse(content, MediaType.TEXT_HTML, filename, download);
     }
+    @GetMapping("/{id}/document/pdf")
+    public ResponseEntity<ByteArrayResource> documentPdf(
+        @PathVariable Long id,
+        @RequestParam(name = "download", defaultValue = "true") boolean download
+    ) {
+        WorkOrder workOrder = requireWorkOrder(id);
+        byte[] content = generateWorkOrderPdf(workOrder);
+        String filename = safeFileName(workOrder.getOrderNumber(), "ordem_servico") + ".pdf";
+
+        return fileResponse(content, MediaType.APPLICATION_PDF, filename, download);
+    }
+
 
     @GetMapping("/{id}/attachment")
     public ResponseEntity<ByteArrayResource> attachment(
@@ -355,7 +378,7 @@ public class WorkOrderController {
 
         String message = String.format(
             Locale.ROOT,
-            "Ola %s! Atualizacao da OS %s:%nStatus: %s%nPrioridade: %s%nEquipamento: %s",
+            "Ola %s! Atualizacao da OS %s:%nStatus: %s%nPrioridade: %s%nEquipamento: %s%nPDF da OS pronto para envio em anexo.",
             workOrder.getCustomerName(),
             workOrder.getOrderNumber(),
             workOrder.getStatus().name().replace('_', ' '),
@@ -366,7 +389,9 @@ public class WorkOrderController {
         String encoded = URLEncoder.encode(message, StandardCharsets.UTF_8);
         String url = "https://wa.me/" + phone + "?text=" + encoded;
 
-        return ResponseEntity.ok(Map.of("url", url, "message", message));
+        String pdfFileName = safeFileName(workOrder.getOrderNumber(), "ordem_servico") + ".pdf";
+
+        return ResponseEntity.ok(Map.of("url", url, "message", message, "pdfFileName", pdfFileName));
     }
 
     private WorkOrder buildWorkOrder(CreateWorkOrderRequest request) {
@@ -726,6 +751,169 @@ public class WorkOrderController {
         html = html.replace("{{generatedAt}}", escapeHtml(formatDateTime(LocalDateTime.now())));
 
         return html.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private byte[] generateWorkOrderPdf(WorkOrder workOrder) {
+        String orderNumber = fallback(workOrder.getOrderNumber(), "Sem numero");
+        List<PdfLine> lines = new ArrayList<>();
+
+        lines.add(new PdfLine("DaniCell Assistencia Tecnica", true, 16f));
+        lines.add(new PdfLine("Ordem de Servico " + orderNumber, true, 14f));
+        lines.add(new PdfLine("Documento para atendimento, acompanhamento e entrega do equipamento.", false, 10.5f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Resumo", true, 12f));
+        lines.add(new PdfLine("Status: " + formatEnum(workOrder.getStatus()), false, 11f));
+        lines.add(new PdfLine("Prioridade: " + formatEnum(workOrder.getPriority()), false, 11f));
+        lines.add(new PdfLine("Criada em: " + formatDateTime(workOrder.getCreatedAt()), false, 11f));
+        lines.add(new PdfLine("Atualizada em: " + formatDateTime(workOrder.getUpdatedAt()), false, 11f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Dados do atendimento", true, 12f));
+        lines.add(new PdfLine("Cliente: " + normalizedText(workOrder.getCustomerName(), "Nao informado"), false, 11f));
+        lines.add(new PdfLine("Telefone: " + normalizedText(workOrder.getCustomerPhone(), "Nao informado"), false, 11f));
+        lines.add(new PdfLine("Equipamento: " + normalizedText(workOrder.getEquipment(), "Nao informado"), false, 11f));
+        lines.add(new PdfLine("Tecnico responsavel: " + normalizedText(workOrder.getTechnicianName(), "Nao atribuido"), false, 11f));
+        lines.add(new PdfLine("Previsao de conclusao: " + formatDate(workOrder.getEstimatedCompletionDate()), false, 11f));
+        lines.add(new PdfLine("Valor do servico: " + formatCurrency(workOrder.getServiceCost()), false, 11f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Defeito relatado", true, 12f));
+        lines.add(new PdfLine(normalizedText(workOrder.getDefectDescription(), "Nao informado"), false, 11f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Observacoes internas", true, 12f));
+        lines.add(new PdfLine(normalizedText(workOrder.getNotes(), "Sem observacoes adicionais."), false, 11f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Anexo", true, 12f));
+        lines.add(new PdfLine(attachmentLabel(workOrder), false, 11f));
+        lines.add(new PdfLine("", false, 10f));
+
+        lines.add(new PdfLine("Assinatura do cliente: ________________________________", false, 10.5f));
+        lines.add(new PdfLine("Assinatura do tecnico: ________________________________", false, 10.5f));
+        lines.add(new PdfLine("", false, 10f));
+        lines.add(new PdfLine("Documento emitido em " + formatDateTime(LocalDateTime.now()) + ".", false, 10f));
+
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream(); PdfRenderer renderer = new PdfRenderer(document)) {
+            renderer.writeLines(lines);
+            document.save(output);
+            return output.toByteArray();
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Falha ao gerar PDF da OS.");
+        }
+    }
+
+    private String normalizedText(String value, String fallbackValue) {
+        String base = StringUtils.hasText(value) ? value.trim() : fallbackValue;
+        return base.replace("\r", "").replace("\t", " ");
+    }
+
+    private String sanitizePdfText(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replaceAll("[^\\x20-\\x7E\\u00A0-\\u00FF]", "?");
+    }
+
+    private List<String> wrapPdfText(String value, PDFont font, float fontSize, float maxWidth) throws IOException {
+        List<String> wrapped = new ArrayList<>();
+        String[] paragraphs = value.replace("\r", "").split("\n", -1);
+
+        for (String paragraph : paragraphs) {
+            String normalized = paragraph.trim();
+            if (normalized.isEmpty()) {
+                wrapped.add("");
+                continue;
+            }
+
+            StringBuilder current = new StringBuilder();
+            for (String word : normalized.split("\\s+")) {
+                String candidate = current.length() == 0 ? word : current + " " + word;
+                float width = font.getStringWidth(candidate) / 1000f * fontSize;
+
+                if (width <= maxWidth || current.length() == 0) {
+                    current.setLength(0);
+                    current.append(candidate);
+                    continue;
+                }
+
+                wrapped.add(current.toString());
+                current.setLength(0);
+                current.append(word);
+            }
+
+            if (current.length() > 0) {
+                wrapped.add(current.toString());
+            }
+        }
+
+        if (wrapped.isEmpty()) {
+            wrapped.add("");
+        }
+
+        return wrapped;
+    }
+
+    private final class PdfRenderer implements AutoCloseable {
+
+        private final PDDocument document;
+        private PDPage page;
+        private PDPageContentStream stream;
+        private float cursorY;
+
+        private PdfRenderer(PDDocument document) throws IOException {
+            this.document = document;
+            openNewPage();
+        }
+
+        private void writeLines(List<PdfLine> lines) throws IOException {
+            for (PdfLine line : lines) {
+                writeLine(line);
+            }
+        }
+
+        private void writeLine(PdfLine line) throws IOException {
+            PDFont font = line.bold() ? PDType1Font.HELVETICA_BOLD : PDType1Font.HELVETICA;
+            float fontSize = line.fontSize();
+            float lineHeight = Math.max(12f, fontSize * 1.35f);
+
+            List<String> chunks = wrapPdfText(line.text(), font, fontSize, page.getMediaBox().getWidth() - (PDF_SIDE_MARGIN * 2));
+            for (String chunk : chunks) {
+                ensureSpace(lineHeight);
+                stream.beginText();
+                stream.setFont(font, fontSize);
+                stream.newLineAtOffset(PDF_SIDE_MARGIN, cursorY);
+                stream.showText(sanitizePdfText(chunk));
+                stream.endText();
+                cursorY -= lineHeight;
+            }
+        }
+
+        private void ensureSpace(float requiredHeight) throws IOException {
+            if (cursorY - requiredHeight < PDF_BOTTOM_MARGIN) {
+                openNewPage();
+            }
+        }
+
+        private void openNewPage() throws IOException {
+            close();
+            page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+            stream = new PDPageContentStream(document, page);
+            cursorY = page.getMediaBox().getHeight() - PDF_TOP_MARGIN;
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (stream != null) {
+                stream.close();
+                stream = null;
+            }
+        }
+    }
+
+    private record PdfLine(String text, boolean bold, float fontSize) {
     }
 
     private String loadBrandLogoDataUri() {

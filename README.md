@@ -1,6 +1,6 @@
 # Sistema Danicell - ERP de Assistencia Tecnica
 
-Sistema para assistencia tecnica com foco em ordens de servico, orcamentos, estoque, financeiro, clientes, auditoria e dashboard operacional.
+Sistema para assistencia tecnica com foco em ordens de servico, orcamentos, estoque, financeiro, clientes, auditoria e dashboard operacional, com emissao de O.S em PDF e envio para WhatsApp.
 
 ## Descricao do projeto
 
@@ -127,6 +127,11 @@ chmod +x deploy/*.sh
 ./deploy/vps-restart.sh
 ```
 
+## O.S em PDF e WhatsApp
+
+- Botao **Baixar PDF** na tela de Ordens de Servico gera o documento da O.S em `application/pdf`.
+- O compartilhamento para WhatsApp tenta enviar o PDF diretamente (quando o navegador suporta compartilhamento de arquivo).
+- Em navegadores sem suporte, o sistema abre o WhatsApp com a mensagem e baixa o PDF para anexo manual.
 ## Variaveis de ambiente
 
 Base oficial: `.env.example`
