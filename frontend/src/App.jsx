@@ -43,7 +43,7 @@ const modules = [
     label: "Orcamentos",
     short: "05",
     description: "Propostas tecnicas, aprovacoes e controle do valor estimado.",
-    roles: ["ADMIN", "ATENDENTE"]
+    roles: ["ADMIN", "ATENDENTE", "TECNICO"]
   },
   {
     id: "finance",

@@ -96,7 +96,7 @@ function safePdfFileName(budgetNumber, fallback = "orcamento") {
   return sanitized.toLowerCase().endsWith(".pdf") ? sanitized : `${sanitized}.pdf`;
 }
 
-export default function BudgetsPage({ token, tenantId }) {
+export default function BudgetsPage({ token, tenantId, role }) {
   const [items, setItems] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [createForm, setCreateForm] = useState(defaultCreateForm);
@@ -107,6 +107,7 @@ export default function BudgetsPage({ token, tenantId }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const canManage = role === "ADMIN" || role === "ATENDENTE";
 
   const selectedItem = useMemo(
     () => items.find((item) => item.id === selectedId) || null,
@@ -207,6 +208,10 @@ export default function BudgetsPage({ token, tenantId }) {
 
   const createBudget = async (event) => {
     event.preventDefault();
+    if (!canManage) {
+      setError("Perfil tecnico nao pode criar orcamentos.");
+      return;
+    }
     setLoading(true);
     setError("");
     setSuccess("");
@@ -236,6 +241,10 @@ export default function BudgetsPage({ token, tenantId }) {
     if (!selectedItem || !editForm) {
       return;
     }
+    if (!canManage) {
+      setError("Perfil tecnico nao pode editar orcamentos.");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -261,6 +270,10 @@ export default function BudgetsPage({ token, tenantId }) {
 
   const updateStatus = async (item, status) => {
     if (item.status === status) {
+      return;
+    }
+    if (!canManage) {
+      setError("Perfil tecnico nao pode alterar status de orcamento.");
       return;
     }
 
@@ -290,6 +303,11 @@ export default function BudgetsPage({ token, tenantId }) {
   };
 
   const deleteBudget = async (item) => {
+    if (!canManage) {
+      setError("Perfil tecnico nao pode excluir orcamentos.");
+      return;
+    }
+
     const confirmed = window.confirm(`Excluir o orcamento ${item.budgetNumber}?`);
     if (!confirmed) {
       return;
@@ -445,6 +463,9 @@ export default function BudgetsPage({ token, tenantId }) {
       </div>
 
       {success && <p className="feedback success">{success}</p>}
+      {!canManage && (
+        <p className="feedback">Perfil tecnico com acesso somente leitura: visualize, baixe PDF e envie por WhatsApp.</p>
+      )}
 
       <div className="finance-layout budget-layout">
         <form className="panel finance-panel-shell" onSubmit={createBudget}>
@@ -559,8 +580,8 @@ export default function BudgetsPage({ token, tenantId }) {
 
           <p className="field-hint">Total previsto: <strong>{formatMoney(previewTotal)}</strong></p>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Salvando..." : "Criar orcamento"}
+          <button type="submit" disabled={!canManage || loading}>
+            {!canManage ? "Somente leitura para Tecnico" : (loading ? "Salvando..." : "Criar orcamento")}
           </button>
         </form>
 
@@ -621,10 +642,12 @@ export default function BudgetsPage({ token, tenantId }) {
                   </div>
 
                   <div className="os-actions">
-                    <button type="button" onClick={() => openDetails(item)}>Editar</button>
+                    <button type="button" onClick={() => openDetails(item)}>{canManage ? "Editar" : "Detalhes"}</button>
                     <button type="button" onClick={() => downloadBudgetPdf(item)}>Baixar PDF</button>
                     <button type="button" onClick={() => shareOnWhatsApp(item)}>WhatsApp</button>
-                    <button type="button" className="button-danger" onClick={() => deleteBudget(item)}>Excluir</button>
+                    {canManage && (
+                      <button type="button" className="button-danger" onClick={() => deleteBudget(item)}>Excluir</button>
+                    )}
                   </div>
                 </div>
               </li>
@@ -637,13 +660,13 @@ export default function BudgetsPage({ token, tenantId }) {
           <div className="panel-head">
             <div>
               <span className="panel-kicker">Detalhes</span>
-              <h4>Edicao e status do orcamento</h4>
-              <p>Abra um item para ajustar valores, descricao tecnica e decisao final.</p>
+              <h4>{canManage ? "Edicao e status do orcamento" : "Detalhes do orcamento"}</h4>
+              <p>{canManage ? "Abra um item para ajustar valores, descricao tecnica e decisao final." : "Abra um item para consultar os dados e enviar o PDF por WhatsApp."}</p>
             </div>
           </div>
 
           {!selectedItem && (
-            <p className="feedback">Selecione um orcamento para editar e alterar o status.</p>
+            <p className="feedback">{canManage ? "Selecione um orcamento para editar e alterar o status." : "Selecione um orcamento para visualizar e compartilhar."}</p>
           )}
 
           {selectedItem && editForm && (
@@ -767,32 +790,40 @@ export default function BudgetsPage({ token, tenantId }) {
                   />
                 </label>
 
-                <button type="submit" disabled={loading} className="field-span-2">
-                  {loading ? "Salvando..." : "Salvar alteracoes"}
-                </button>
+                {canManage ? (
+                  <button type="submit" disabled={loading} className="field-span-2">
+                    {loading ? "Salvando..." : "Salvar alteracoes"}
+                  </button>
+                ) : (
+                  <p className="field-hint field-span-2">Perfil tecnico: edicao bloqueada, use PDF e WhatsApp.</p>
+                )}
               </form>
 
-              <div className="status-quick-actions">
-                {BUDGET_STATUSES.map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    className={selectedItem.status === status ? "active" : ""}
-                    onClick={() => updateStatus(selectedItem, status)}
-                  >
-                    {statusLabel(status)}
-                  </button>
-                ))}
-              </div>
+              {canManage && (
+                <div className="status-quick-actions">
+                  {BUDGET_STATUSES.map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      className={selectedItem.status === status ? "active" : ""}
+                      onClick={() => updateStatus(selectedItem, status)}
+                    >
+                      {statusLabel(status)}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="detail-actions">
                 <button type="button" onClick={() => downloadBudgetPdf(selectedItem)}>Baixar PDF</button>
                 <button type="button" onClick={() => shareOnWhatsApp(selectedItem)}>Enviar WhatsApp</button>
-                <button type="button" className="button-danger" onClick={() => deleteBudget(selectedItem)}>
-                  Excluir orcamento
-                </button>
+                {canManage && (
+                  <button type="button" className="button-danger" onClick={() => deleteBudget(selectedItem)}>
+                    Excluir orcamento
+                  </button>
+                )}
                 <button type="button" onClick={closeDetails}>
-                  Fechar edicao
+                  Fechar
                 </button>
               </div>
             </>
