@@ -15,7 +15,18 @@ function buildApiUrl(path) {
   return `${API_URL}${normalizedPath}`;
 }
 
-async function parseResponse(response, responseType) {
+function clearAuthSession() {
+  try {
+    localStorage.removeItem("erp_token");
+    localStorage.removeItem("erp_user");
+    localStorage.removeItem("erp_role");
+    localStorage.setItem("erp_tenant", "public");
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+async function parseResponse(response, responseType, context = {}) {
   if (!response.ok) {
     let message = `Erro HTTP ${response.status}`;
 
@@ -34,6 +45,14 @@ async function parseResponse(response, responseType) {
       }
     } catch {
       // Keep default message.
+    }
+
+    if (response.status === 401 && context.hadToken) {
+      clearAuthSession();
+      if (typeof window !== "undefined") {
+        window.setTimeout(() => window.location.reload(), 50);
+      }
+      throw new Error("Sessao expirada. Faca login novamente.");
     }
 
     throw new Error(message);
@@ -85,7 +104,7 @@ export async function apiRequest(
     body: payload
   });
 
-  return parseResponse(response, responseType);
+  return parseResponse(response, responseType, { hadToken: Boolean(token), path });
 }
 
 export async function login({ username, password, tenantId }) {
