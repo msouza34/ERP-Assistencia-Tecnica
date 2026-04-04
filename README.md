@@ -195,6 +195,28 @@ docker compose logs -f backend
 docker compose logs -f proxy
 ```
 
+## Backup e rollback na VPS
+
+Scripts adicionados para operacao segura em producao:
+
+- `deploy/vps-backup.sh`: cria snapshot local de rollback em `.deploy-backups/`.
+- `deploy/vps-rollback.sh`: volta para um snapshot anterior.
+- `deploy/vps-safe-update.sh`: faz backup + update com rollback automatico em caso de falha.
+
+Comando unico recomendado para atualizar em producao:
+
+```bash
+./deploy/vps-safe-update.sh
+```
+
+Comandos manuais:
+
+```bash
+./deploy/vps-backup.sh
+./deploy/vps-rollback.sh latest
+./deploy/vps-rollback.sh <BACKUP_ID> --with-db
+```
+
 ## Boas praticas de seguranca
 
 - Nunca versionar `.env`.
