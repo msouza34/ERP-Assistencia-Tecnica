@@ -373,7 +373,7 @@ public class WorkOrderController {
         WorkOrder workOrder = requireWorkOrder(id);
         String phone = normalizePhone(workOrder.getCustomerPhone());
         if (phone == null) {
-            throw new IllegalArgumentException("Telefone do cliente nao informado na OS.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefone do cliente nao informado na OS.");
         }
 
         String message = String.format(

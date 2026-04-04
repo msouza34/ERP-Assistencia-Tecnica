@@ -243,7 +243,7 @@ public class BudgetController {
         Budget budget = requireBudget(id);
         String phone = normalizePhone(budget.getCustomerPhone());
         if (phone == null) {
-            throw new IllegalArgumentException("Telefone do cliente nao informado no orcamento.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefone do cliente nao informado no orcamento.");
         }
 
         String message = String.format(
