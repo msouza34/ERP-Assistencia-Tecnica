@@ -80,6 +80,16 @@ const moduleComponents = {
 
 const DEFAULT_TENANT_ID = "public";
 
+function formatHeaderDate() {
+  return new Intl.DateTimeFormat("pt-BR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date());
+}
+
 function roleLabel(role) {
   if (role === "ADMIN") {
     return "Administracao";
@@ -191,24 +201,23 @@ export default function App() {
         <section className="auth-stage">
           <article className="auth-spotlight">
             <span className="auth-kicker">DaniCell Gestao</span>
-            <h1>Operacao profissional para assistencia tecnica.</h1>
+            <h1>Central operacional DaniCell.</h1>
             <p>
-              Controle ordens de servico, estoque, financeiro e atendimento em uma interface
-              mais limpa, rapida e pronta para o dia a dia da loja.
+              Atendimento, bancada, estoque e financeiro em uma base interna unica.
             </p>
 
             <div className="auth-benefits">
               <div className="auth-benefit-card">
-                <strong>Fluxo centralizado</strong>
-                <span>Equipe, estoque, financeiro e OS trabalhando no mesmo painel.</span>
+                <strong>Operacao</strong>
+                <span>OS, orcamentos e clientes no mesmo fluxo.</span>
               </div>
               <div className="auth-benefit-card">
-                <strong>Marca DaniCell</strong>
-                <span>Visual mais profissional, focado na operacao e sem excesso tecnico na tela.</span>
+                <strong>Controle</strong>
+                <span>Estoque, financeiro e auditoria com rastreabilidade.</span>
               </div>
               <div className="auth-benefit-card">
-                <strong>Pronto para crescer</strong>
-                <span>Base organizada para finalizar o projeto e manter a experiencia consistente.</span>
+                <strong>Entrega</strong>
+                <span>Documentos e recibos padronizados para o cliente.</span>
               </div>
             </div>
           </article>
@@ -216,8 +225,8 @@ export default function App() {
           <form className="auth-card auth-card-pro" onSubmit={handleLogin}>
             <div className="auth-brand-block">
               <span className="auth-section-label">Acesso seguro</span>
-              <h2>Entrar no painel interno</h2>
-              <p>Use seu login para acessar a central operacional da DaniCell.</p>
+              <h2>Entrar</h2>
+              <p>Area restrita da equipe.</p>
             </div>
 
             <label className="field-stack">
@@ -260,7 +269,7 @@ export default function App() {
         <div className="sidebar-brand">
           <span className="sidebar-kicker">DaniCell Gestao</span>
           <h2>Assistencia Tecnica</h2>
-          <p>Base interna para atendimento, reparo, estoque e controle financeiro.</p>
+          <p>Operacao interna, atendimento e controle.</p>
         </div>
 
         <div className="sidebar-user-card">
@@ -319,6 +328,7 @@ export default function App() {
           <div className="content-header-side">
             <span className="content-role-chip">{roleLabel(role)}</span>
             <strong>{username}</strong>
+            <small>{formatHeaderDate()}</small>
           </div>
         </header>
 

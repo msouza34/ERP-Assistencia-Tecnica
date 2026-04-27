@@ -399,27 +399,60 @@ export default function BudgetsPage({ token, tenantId, role }) {
     }
   };
 
+  const convertToWorkOrder = async (item) => {
+    if (!canManage) {
+      setError("Perfil tecnico nao pode converter orcamentos.");
+      return;
+    }
+    if (item.status !== "APROVADO") {
+      setError("Apenas orcamentos aprovados podem virar OS.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Migrar o orcamento ${item.budgetNumber} para uma nova OS?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const data = await apiRequest(`/api/v1/budgets/${item.id}/convert-to-work-order`, {
+        method: "POST",
+        token,
+        tenantId
+      });
+      setSuccess(data.created
+        ? `OS ${data.orderNumber} criada a partir do orcamento.`
+        : `Este orcamento ja estava migrado para a OS ${data.orderNumber}.`);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <section className="budget-screen finance-screen-pro">
       <div className="module-hero budget-hero panel">
         <div className="module-hero-copy">
           <span className="module-hero-kicker">Modulo de Orcamentos</span>
-          <h3>Propostas tecnicas com valor calculado e aprovacao rastreavel.</h3>
-          <p>
-            Registre o problema, monte os itens do servico e acompanhe a conversao dos
-            orcamentos em aprovacoes com controle total de status.
-          </p>
+          <h3>Carteira comercial de orcamentos.</h3>
+          <p>Propostas, aprovacao, PDF, WhatsApp e migracao para OS.</p>
 
           <div className="module-highlight-row">
             <article className="module-highlight-card">
               <span>Pipeline ativo</span>
               <strong>{formatMoney(metrics?.pipelineTotal ?? 0)}</strong>
-              <small>Rascunhos e orcamentos enviados aguardando decisao.</small>
+              <small>Rascunhos e enviados.</small>
             </article>
             <article className="module-highlight-card">
               <span>Aprovados</span>
               <strong>{formatMoney(metrics?.approvedTotal ?? 0)}</strong>
-              <small>Valor total de propostas aprovadas.</small>
+              <small>Prontos para execucao.</small>
             </article>
           </div>
         </div>
@@ -428,17 +461,17 @@ export default function BudgetsPage({ token, tenantId, role }) {
           <div className="module-mini-stat">
             <span>Total</span>
             <strong>{metrics?.total ?? 0}</strong>
-            <small>Orcamentos registrados no tenant atual.</small>
+            <small>Registrados.</small>
           </div>
           <div className="module-mini-stat">
             <span>Enviados</span>
             <strong>{metrics?.sent ?? 0}</strong>
-            <small>Aguardando retorno do cliente.</small>
+            <small>Aguardando cliente.</small>
           </div>
           <div className="module-mini-stat">
             <span>Aprovados</span>
             <strong>{metrics?.approved ?? 0}</strong>
-            <small>Prontos para virar ordem de servico.</small>
+            <small>Migraveis para OS.</small>
           </div>
         </div>
       </div>
@@ -472,8 +505,8 @@ export default function BudgetsPage({ token, tenantId, role }) {
           <div className="panel-head">
             <div>
               <span className="panel-kicker">Novo orcamento</span>
-              <h4>Monte a proposta tecnica</h4>
-              <p>Preencha os dados do cliente, problema, custos e validade da proposta.</p>
+              <h4>Nova proposta</h4>
+              <p>Cliente, problema, itens e valores.</p>
             </div>
           </div>
 
@@ -589,7 +622,7 @@ export default function BudgetsPage({ token, tenantId, role }) {
           <div className="panel-head panel-head-inline">
             <div>
               <span className="panel-kicker">Carteira de orcamentos</span>
-              <h4>Acompanhe propostas e decisao do cliente</h4>
+              <h4>Propostas</h4>
               <p>{filteredItems.length} orcamentos exibidos.</p>
             </div>
             <button type="button" onClick={refresh} disabled={loading}>
@@ -615,7 +648,7 @@ export default function BudgetsPage({ token, tenantId, role }) {
 
           <ul className="list budget-list">
             {filteredItems.map((item) => (
-              <li key={item.id} className={`budget-item ${statusClass(item.status)}`}>
+              <li key={item.id} className={`budget-item ${statusClass(item.status)} ${selectedId === item.id ? "selected" : ""}`}>
                 <div className="budget-item-top">
                   <div>
                     <strong>{item.budgetNumber}</strong>
@@ -645,6 +678,9 @@ export default function BudgetsPage({ token, tenantId, role }) {
                     <button type="button" onClick={() => openDetails(item)}>{canManage ? "Editar" : "Detalhes"}</button>
                     <button type="button" onClick={() => downloadBudgetPdf(item)}>Baixar PDF</button>
                     <button type="button" onClick={() => shareOnWhatsApp(item)}>WhatsApp</button>
+                    {canManage && item.status === "APROVADO" && (
+                      <button type="button" onClick={() => convertToWorkOrder(item)}>Migrar para OS</button>
+                    )}
                     {canManage && (
                       <button type="button" className="button-danger" onClick={() => deleteBudget(item)}>Excluir</button>
                     )}
@@ -660,8 +696,8 @@ export default function BudgetsPage({ token, tenantId, role }) {
           <div className="panel-head">
             <div>
               <span className="panel-kicker">Detalhes</span>
-              <h4>{canManage ? "Edicao e status do orcamento" : "Detalhes do orcamento"}</h4>
-              <p>{canManage ? "Abra um item para ajustar valores, descricao tecnica e decisao final." : "Abra um item para consultar os dados e enviar o PDF por WhatsApp."}</p>
+              <h4>{canManage ? "Editar orcamento" : "Detalhes do orcamento"}</h4>
+              <p>{canManage ? "Valores, status e conversao para OS." : "Consulta e compartilhamento."}</p>
             </div>
           </div>
 
@@ -817,6 +853,9 @@ export default function BudgetsPage({ token, tenantId, role }) {
               <div className="detail-actions">
                 <button type="button" onClick={() => downloadBudgetPdf(selectedItem)}>Baixar PDF</button>
                 <button type="button" onClick={() => shareOnWhatsApp(selectedItem)}>Enviar WhatsApp</button>
+                {canManage && selectedItem.status === "APROVADO" && (
+                  <button type="button" onClick={() => convertToWorkOrder(selectedItem)}>Migrar para OS</button>
+                )}
                 {canManage && (
                   <button type="button" className="button-danger" onClick={() => deleteBudget(selectedItem)}>
                     Excluir orcamento

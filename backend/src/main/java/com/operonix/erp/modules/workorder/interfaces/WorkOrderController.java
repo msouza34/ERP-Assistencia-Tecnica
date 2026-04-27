@@ -1,5 +1,6 @@
 package com.operonix.erp.modules.workorder.interfaces;
 
+import com.operonix.erp.config.AppProperties;
 import com.operonix.erp.modules.workorder.domain.WorkOrder;
 import com.operonix.erp.modules.workorder.domain.WorkOrderPriority;
 import com.operonix.erp.modules.workorder.domain.WorkOrderStatus;
@@ -38,6 +39,7 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.ContentDisposition;
@@ -84,15 +86,18 @@ public class WorkOrderController {
     private final WorkOrderRepository workOrderRepository;
     private final WorkOrderTimelineEventRepository timelineEventRepository;
     private final AuditService auditService;
+    private final AppProperties appProperties;
 
     public WorkOrderController(
         WorkOrderRepository workOrderRepository,
         WorkOrderTimelineEventRepository timelineEventRepository,
-        AuditService auditService
+        AuditService auditService,
+        AppProperties appProperties
     ) {
         this.workOrderRepository = workOrderRepository;
         this.timelineEventRepository = timelineEventRepository;
         this.auditService = auditService;
+        this.appProperties = appProperties;
     }
 
     @GetMapping
@@ -375,6 +380,9 @@ public class WorkOrderController {
     @GetMapping("/{id}/whatsapp-link")
     public ResponseEntity<Map<String, String>> whatsappLink(@PathVariable Long id) {
         WorkOrder workOrder = requireWorkOrder(id);
+        if (!isReceiptStatus(workOrder.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OS so pode ser enviada ao cliente quando estiver finalizada ou entregue.");
+        }
         String phone = normalizePhone(workOrder.getCustomerPhone());
         if (phone == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefone do cliente nao informado na OS.");
@@ -520,6 +528,9 @@ public class WorkOrderController {
         String logoMarkup = StringUtils.hasText(logoDataUri)
             ? "<div class=\"brand-mark\"><img src=\"" + logoDataUri + "\" alt=\"Logo DaniCell\" /></div>"
             : "";
+        String watermarkMarkup = StringUtils.hasText(logoDataUri)
+            ? "<img class=\"watermark\" src=\"" + logoDataUri + "\" alt=\"\" />"
+            : "";
 
         String html = """
             <!DOCTYPE html>
@@ -538,12 +549,29 @@ public class WorkOrderController {
                   color: #0f172a;
                 }
                 .sheet {
+                  position: relative;
                   max-width: 960px;
                   margin: 0 auto;
                   background: #ffffff;
                   border-radius: 24px;
                   overflow: hidden;
                   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
+                }
+                .watermark {
+                  position: absolute;
+                  left: 50%;
+                  top: 50%;
+                  width: min(72%, 680px);
+                  transform: translate(-50%, -45%);
+                  opacity: 0.045;
+                  pointer-events: none;
+                  z-index: 0;
+                }
+                .hero,
+                .content,
+                .footer {
+                  position: relative;
+                  z-index: 1;
                 }
                 .hero {
                   display: flex;
@@ -664,6 +692,12 @@ public class WorkOrderController {
                   color: #64748b;
                   font-size: 13px;
                 }
+                .receipt-grid {
+                  display: grid;
+                  grid-template-columns: repeat(2, minmax(0, 1fr));
+                  gap: 14px 18px;
+                  margin-top: 12px;
+                }
                 .footer {
                   padding: 0 30px 26px;
                   color: #64748b;
@@ -684,9 +718,11 @@ public class WorkOrderController {
             </head>
             <body>
               <main class="sheet">
+                {{watermarkMarkup}}
                 <section class="hero">
                   <div>
                     <small>DaniCell Assistencia Tecnica</small>
+                    <p>{{businessInfo}}</p>
                     <h1>Ordem de Servico {{orderNumber}}</h1>
                     <p>Documento profissional para atendimento, diagnostico, acompanhamento e entrega do equipamento.</p>
                   </div>
@@ -727,6 +763,8 @@ public class WorkOrderController {
                       <div class="signature">Assinatura do tecnico</div>
                     </div>
                   </section>
+
+                  {{receiptMarkup}}
                 </section>
 
                 <footer class="footer">
@@ -739,6 +777,8 @@ public class WorkOrderController {
 
         html = html.replace("{{orderNumber}}", escapeHtml(fallback(workOrder.getOrderNumber(), "Sem numero")));
         html = html.replace("{{logoMarkup}}", logoMarkup);
+        html = html.replace("{{watermarkMarkup}}", watermarkMarkup);
+        html = html.replace("{{businessInfo}}", escapeHtml(businessInfoText()));
         html = html.replace("{{status}}", escapeHtml(formatEnum(workOrder.getStatus())));
         html = html.replace("{{priority}}", escapeHtml(formatEnum(workOrder.getPriority())));
         html = html.replace("{{createdAt}}", escapeHtml(formatDateTime(workOrder.getCreatedAt())));
@@ -753,6 +793,7 @@ public class WorkOrderController {
         html = html.replace("{{notes}}", toHtmlText(workOrder.getNotes(), "Sem observacoes adicionais."));
         html = html.replace("{{attachmentInfo}}", escapeHtml(attachmentLabel(workOrder)));
         html = html.replace("{{generatedAt}}", escapeHtml(formatDateTime(LocalDateTime.now())));
+        html = html.replace("{{receiptMarkup}}", buildReceiptHtml(workOrder));
 
         return html.getBytes(StandardCharsets.UTF_8);
     }
@@ -762,6 +803,7 @@ public class WorkOrderController {
         List<PdfLine> lines = new ArrayList<>();
 
         lines.add(new PdfLine("DaniCell Assistencia Tecnica", true, 16f));
+        addBusinessInfoLines(lines);
         lines.add(new PdfLine("Ordem de Servico " + orderNumber, true, 14f));
         lines.add(new PdfLine("Documento para atendimento, acompanhamento e entrega do equipamento.", false, 10.5f));
         lines.add(new PdfLine("", false, 10f));
@@ -797,6 +839,7 @@ public class WorkOrderController {
         lines.add(new PdfLine("Assinatura do cliente: ________________________________", false, 10.5f));
         lines.add(new PdfLine("Assinatura do tecnico: ________________________________", false, 10.5f));
         lines.add(new PdfLine("", false, 10f));
+        addReceiptLines(lines, workOrder);
         lines.add(new PdfLine("Documento emitido em " + formatDateTime(LocalDateTime.now()) + ".", false, 10f));
 
         try (PDDocument document = new PDDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
@@ -912,9 +955,29 @@ public class WorkOrderController {
             document.addPage(page);
             stream = new PDPageContentStream(document, page);
             pageNumber++;
+            drawWatermark();
             drawPageHeader();
             drawPageFooter();
             cursorY = page.getMediaBox().getHeight() - PDF_TOP_MARGIN - PDF_HEADER_HEIGHT;
+        }
+
+        private void drawWatermark() throws IOException {
+            if (logoImage == null) {
+                return;
+            }
+
+            float pageWidth = page.getMediaBox().getWidth();
+            float pageHeight = page.getMediaBox().getHeight();
+            float[] logoSize = fitWithin(logoImage.getWidth(), logoImage.getHeight(), pageWidth * 0.82f, pageHeight * 0.46f);
+            float logoX = (pageWidth - logoSize[0]) / 2f;
+            float logoY = (pageHeight - logoSize[1]) / 2f - 18f;
+
+            PDExtendedGraphicsState state = new PDExtendedGraphicsState();
+            state.setNonStrokingAlphaConstant(0.06f);
+            stream.saveGraphicsState();
+            stream.setGraphicsStateParameters(state);
+            stream.drawImage(logoImage, logoX, logoY, logoSize[0], logoSize[1]);
+            stream.restoreGraphicsState();
         }
 
         private void drawPageHeader() throws IOException {
@@ -948,6 +1011,16 @@ public class WorkOrderController {
             stream.newLineAtOffset(textStartX, headerBottom + PDF_HEADER_HEIGHT - 45f);
             stream.showText("Ordem de servico tecnica com layout profissional para atendimento.");
             stream.endText();
+
+            String businessInfo = businessInfoText();
+            if (StringUtils.hasText(businessInfo)) {
+                stream.beginText();
+                stream.setNonStrokingColor(214, 222, 233);
+                stream.setFont(PDType1Font.HELVETICA, 8.5f);
+                stream.newLineAtOffset(textStartX, headerBottom + PDF_HEADER_HEIGHT - 60f);
+                stream.showText(sanitizePdfText(businessInfo));
+                stream.endText();
+            }
         }
 
         private void drawPageFooter() throws IOException {
@@ -1020,6 +1093,63 @@ public class WorkOrderController {
             return "Sem anexo";
         }
         return "Anexo disponivel: " + fallback(workOrder.getAttachmentFileName(), "arquivo_os");
+    }
+
+    private boolean isReceiptStatus(WorkOrderStatus status) {
+        return status == WorkOrderStatus.FINALIZADO || status == WorkOrderStatus.ENTREGUE;
+    }
+
+    private void addBusinessInfoLines(List<PdfLine> lines) {
+        String businessInfo = businessInfoText();
+        if (StringUtils.hasText(businessInfo)) {
+            lines.add(new PdfLine(businessInfo, false, 9.5f));
+        }
+    }
+
+    private String businessInfoText() {
+        List<String> parts = new ArrayList<>();
+        if (StringUtils.hasText(appProperties.getDocument().getCnpj())) {
+            parts.add("CNPJ: " + appProperties.getDocument().getCnpj().trim());
+        }
+        if (StringUtils.hasText(appProperties.getDocument().getCommercialPhone())) {
+            parts.add("Comercial: " + appProperties.getDocument().getCommercialPhone().trim());
+        }
+        return String.join(" | ", parts);
+    }
+
+    private void addReceiptLines(List<PdfLine> lines, WorkOrder workOrder) {
+        if (!isReceiptStatus(workOrder.getStatus())) {
+            return;
+        }
+
+        lines.add(new PdfLine("Recibo", true, 12f));
+        lines.add(new PdfLine("Recebi em ____/____/________ o equipamento descrito nesta OS.", false, 10.5f));
+        lines.add(new PdfLine("Pagamento: ( ) Dinheiro  ( ) Pix  ( ) Cartao debito  ( ) Cartao credito em ____x", false, 10.5f));
+        lines.add(new PdfLine("Valor recebido: " + formatCurrency(workOrder.getServiceCost()), false, 10.5f));
+        lines.add(new PdfLine("", false, 10f));
+        lines.add(new PdfLine("Assinatura do recebedor: ________________________________", false, 10.5f));
+        lines.add(new PdfLine("", false, 10f));
+    }
+
+    private String buildReceiptHtml(WorkOrder workOrder) {
+        if (!isReceiptStatus(workOrder.getStatus())) {
+            return "";
+        }
+
+        return """
+                  <section class="section">
+                    <h2>Recibo</h2>
+                    <div class="receipt-grid">
+                      <div class="field"><label>Recebimento</label><div>Recebi em ____/____/________ o equipamento descrito nesta OS.</div></div>
+                      <div class="field"><label>Valor recebido</label><div>{{receiptValue}}</div></div>
+                      <div class="field full"><label>Forma de pagamento</label><div>( ) Dinheiro &nbsp; ( ) Pix &nbsp; ( ) Cartao debito &nbsp; ( ) Cartao credito em ____x</div></div>
+                    </div>
+                    <div class="signatures">
+                      <div class="signature">Assinatura do recebedor</div>
+                      <div class="signature">Assinatura da DaniCell</div>
+                    </div>
+                  </section>
+            """.replace("{{receiptValue}}", escapeHtml(formatCurrency(workOrder.getServiceCost())));
     }
 
     private String formatCurrency(BigDecimal value) {

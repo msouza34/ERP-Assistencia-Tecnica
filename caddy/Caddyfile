@@ -31,6 +31,12 @@ https://{$APP_DOMAIN} {
     import backend_proxy_secure
   }
 
+  @app_shell path / /index.html
+  header @app_shell Cache-Control "no-store, max-age=0"
+
+  @static_assets path /assets/*
+  header @static_assets Cache-Control "public, max-age=31536000, immutable"
+
   handle {
     reverse_proxy frontend:80
   }
@@ -67,6 +73,12 @@ http://localhost, http://127.0.0.1 {
   handle @api {
     import backend_proxy_secure
   }
+
+  @app_shell path / /index.html
+  header @app_shell Cache-Control "no-store, max-age=0"
+
+  @static_assets path /assets/*
+  header @static_assets Cache-Control "public, max-age=31536000, immutable"
 
   handle {
     reverse_proxy frontend:80

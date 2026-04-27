@@ -1578,6 +1578,343 @@ button:hover {
   }
 }
 
+/* ===== ERP Flow Polish ===== */
+.workbench,
+.budget-screen,
+.finance-screen {
+  gap: 10px;
+}
+
+.module-hero,
+.workbench-pro-refined .panel.module-hero,
+.inventory-pro-refined .panel.module-hero,
+.finance-screen-pro .panel.module-hero {
+  padding: 12px 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+}
+
+.module-hero-copy {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.module-hero-copy h3,
+.dashboard-banner-copy h2,
+.workbench-pro-refined .module-hero .module-hero-copy h3,
+.inventory-pro-refined .module-hero .module-hero-copy h3,
+.finance-screen-pro .module-hero .module-hero-copy h3 {
+  font-size: 1.05rem;
+}
+
+.module-hero-side {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.module-mini-stat,
+.module-highlight-card {
+  min-height: 76px;
+}
+
+.module-mini-stat small,
+.module-highlight-card small {
+  display: block;
+  margin-top: 2px;
+  line-height: 1.25;
+}
+
+.workbench-metrics {
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+}
+
+.metric-card {
+  min-height: 74px;
+}
+
+.workbench-layout,
+.finance-layout,
+.budget-layout {
+  grid-template-columns: minmax(260px, 310px) minmax(520px, 1fr) minmax(330px, 390px);
+  align-items: start;
+}
+
+.workbench-layout > .panel,
+.finance-layout > .panel,
+.budget-layout > .panel {
+  min-width: 0;
+}
+
+.create-os,
+.finance-create,
+.workbench-layout > form.panel,
+.finance-layout > form.panel,
+.budget-layout > form.panel {
+  position: sticky;
+  top: 18px;
+}
+
+.detail-panel,
+.finance-detail,
+.budget-layout > .panel:last-child {
+  position: sticky;
+  top: 18px;
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+}
+
+.operations-panel,
+.finance-list-panel,
+.budget-layout > .panel:nth-child(2) {
+  min-height: calc(100vh - 172px);
+}
+
+.advanced-list,
+.finance-list,
+.budget-list {
+  max-height: calc(100vh - 330px);
+}
+
+.advanced-list-pro li,
+.finance-item,
+.budget-item {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  border-left-width: 3px;
+}
+
+.advanced-list-pro li.selected,
+.finance-item.selected,
+.budget-item.selected,
+.os-card.selected {
+  border-color: #7bb6aa !important;
+  background: #f2fbf8 !important;
+  box-shadow: inset 3px 0 0 var(--brand), var(--shadow);
+}
+
+.advanced-list-pro li {
+  grid-template-columns: minmax(170px, 0.7fr) minmax(260px, 1fr) auto;
+  align-items: center;
+}
+
+.advanced-list-pro .os-line {
+  margin: 0;
+}
+
+.advanced-list-pro .os-meta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 4px 10px;
+}
+
+.advanced-list-pro .os-actions {
+  justify-content: flex-end;
+  max-width: 420px;
+}
+
+.finance-item-top,
+.budget-item-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
+  align-items: start;
+}
+
+.finance-item-footer,
+.budget-item .finance-item-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #edf1f5;
+}
+
+.finance-item-values,
+.budget-item-values {
+  justify-items: end;
+}
+
+.finance-item-values strong,
+.budget-item-values strong {
+  color: var(--ink-strong);
+  font-size: 1rem;
+}
+
+.finance-toolbar-pro,
+.operations-toolbar-pro {
+  grid-template-columns: minmax(260px, 1fr) minmax(320px, auto);
+  align-items: center;
+}
+
+.operations-toolbar-pro > input,
+.finance-toolbar-pro > input {
+  min-width: 260px;
+}
+
+.filters-row {
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto;
+}
+
+.workorder-status-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.status-pill {
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-subtle) !important;
+}
+
+.status-pill span,
+.detail-summary-card span {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status-pill strong,
+.detail-summary-card strong {
+  color: var(--ink-strong);
+  font-size: 1rem;
+}
+
+.detail-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.detail-head strong {
+  color: var(--ink-strong);
+}
+
+.detail-head span {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.detail-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.status-quick-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.status-quick-actions button {
+  white-space: nowrap;
+}
+
+.detail-actions {
+  padding-top: 8px;
+  border-top: 1px solid #edf1f5;
+}
+
+.timeline {
+  padding-top: 8px;
+  border-top: 1px solid #edf1f5;
+}
+
+.timeline li {
+  box-shadow: none;
+}
+
+.timeline li p {
+  margin: 0.15rem 0;
+  color: var(--ink-strong);
+}
+
+.timeline li small {
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 0.76rem;
+}
+
+.kanban-board {
+  max-height: calc(100vh - 330px);
+  overflow: auto;
+}
+
+.kanban-column {
+  min-width: 230px;
+}
+
+.os-card {
+  box-shadow: none;
+}
+
+.empty-state,
+.empty-column {
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+}
+
+@media (max-width: 1480px) {
+  .workbench-layout,
+  .finance-layout,
+  .budget-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .create-os,
+  .finance-create,
+  .workbench-layout > form.panel,
+  .finance-layout > form.panel,
+  .budget-layout > form.panel,
+  .detail-panel,
+  .finance-detail,
+  .budget-layout > .panel:last-child {
+    position: static;
+    max-height: none;
+  }
+
+  .operations-panel,
+  .finance-list-panel,
+  .budget-layout > .panel:nth-child(2) {
+    min-height: auto;
+  }
+
+  .advanced-list,
+  .finance-list,
+  .budget-list,
+  .kanban-board {
+    max-height: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .module-hero,
+  .workbench-pro-refined .panel.module-hero,
+  .inventory-pro-refined .panel.module-hero,
+  .finance-screen-pro .panel.module-hero,
+  .module-hero-side,
+  .workbench-metrics,
+  .workorder-status-strip,
+  .finance-toolbar-pro,
+  .operations-toolbar-pro,
+  .filters-row,
+  .advanced-list-pro li,
+  .finance-item-top,
+  .budget-item-top,
+  .finance-item-footer,
+  .budget-item .finance-item-footer,
+  .detail-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .advanced-list-pro .os-actions,
+  .finance-item-values,
+  .budget-item-values {
+    justify-content: flex-start;
+    justify-items: start;
+  }
+}
+
 @media (max-width: 720px) {
   .auth-shell-pro {
     padding: 14px;
@@ -2795,5 +3132,861 @@ body.density-comfortable {
 
   .budget-item-values {
     justify-items: start;
+  }
+}
+
+/* ===== Professional Operations System ===== */
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-subtle: #f8fafc;
+  --panel: #ffffff;
+  --ink: #17202a;
+  --ink-strong: #0b1220;
+  --ink-soft: #647084;
+  --brand: #0f7a68;
+  --brand-dark: #0a5f51;
+  --brand-soft: #e2f4ef;
+  --accent: #b7791f;
+  --line: #d9e1ea;
+  --line-strong: #c6d0dc;
+  --error: #b4233c;
+  --success: #087443;
+  --warning: #a15c07;
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 10px 24px rgba(15, 23, 42, 0.05);
+  --radius: 8px;
+  --radius-sm: 6px;
+  --control-height: 38px;
+}
+
+* {
+  letter-spacing: 0;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+body.density-comfortable {
+  font-size: 15px;
+}
+
+button,
+input,
+textarea,
+select {
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line-strong);
+  background: #ffffff;
+  color: var(--ink-strong);
+  box-shadow: none;
+}
+
+textarea {
+  min-height: 82px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a0af;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(15, 122, 104, 0.12);
+}
+
+button {
+  min-height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--line-strong);
+  background: #ffffff;
+  color: var(--ink-strong);
+  box-shadow: none;
+  font-weight: 650;
+  cursor: pointer;
+  transform: none;
+}
+
+button:hover {
+  background: var(--surface-subtle);
+  border-color: #aeb9c8;
+  color: var(--ink-strong);
+  transform: none;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+form > button[type="submit"],
+.auth-card-pro > button[type="submit"],
+.panel-head-inline > button,
+.operations-toolbar button,
+.users-toolbar button,
+.audit-toolbar button,
+.finance-toolbar button {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #ffffff;
+}
+
+form > button[type="submit"]:hover,
+.auth-card-pro > button[type="submit"]:hover,
+.panel-head-inline > button:hover,
+.operations-toolbar button:hover,
+.users-toolbar button:hover,
+.audit-toolbar button:hover,
+.finance-toolbar button:hover {
+  border-color: var(--brand-dark);
+  background: var(--brand-dark);
+  color: #ffffff;
+}
+
+.button-danger,
+button.button-danger {
+  border-color: #f0b5c0;
+  background: #fff5f7;
+  color: var(--error);
+}
+
+.button-danger:hover,
+button.button-danger:hover {
+  border-color: var(--error);
+  background: var(--error);
+  color: #ffffff;
+}
+
+.app-shell-pro {
+  min-height: 100vh;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 272px minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+  background: var(--bg);
+}
+
+.sidebar-pro {
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  height: 100vh;
+  overflow: auto;
+  padding: 18px 14px;
+  border-radius: 0;
+  border: 0;
+  border-right: 1px solid #1f2933;
+  background: #111820;
+  box-shadow: none;
+}
+
+.sidebar-pro::before,
+.workspace-surface::before,
+.auth-card-pro::before {
+  display: none;
+}
+
+.sidebar-brand {
+  padding: 4px 4px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-brand h2 {
+  margin: 0.55rem 0 0.25rem;
+  color: #ffffff;
+  font-size: 1.18rem;
+  line-height: 1.15;
+}
+
+.sidebar-brand p,
+.sidebar-nav-copy small,
+.sidebar-user-card small {
+  color: rgba(226, 232, 240, 0.68);
+}
+
+.sidebar-kicker,
+.auth-kicker,
+.auth-section-label,
+.content-kicker,
+.dashboard-banner-kicker,
+.panel-kicker,
+.module-hero-kicker {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--brand);
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sidebar-kicker {
+  color: #7dd3c7;
+}
+
+.sidebar-user-card {
+  padding: 12px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-user-card strong {
+  color: #ffffff;
+}
+
+.sidebar-user-role,
+.content-role-chip {
+  padding: 0.22rem 0.45rem;
+  border-radius: var(--radius-sm);
+  background: rgba(125, 211, 199, 0.12);
+  border: 1px solid rgba(125, 211, 199, 0.22);
+  color: #a7f3e7;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.density-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.density-toggle button {
+  min-height: 30px;
+  padding: 0.35rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: rgba(226, 232, 240, 0.76);
+  font-size: 0.72rem;
+}
+
+.density-toggle button.active {
+  background: #ffffff;
+  color: #111820;
+}
+
+.sidebar-nav {
+  gap: 4px;
+}
+
+.sidebar-nav button {
+  min-height: 48px;
+  padding: 0.55rem;
+  grid-template-columns: 34px 1fr;
+  gap: 0.55rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: transparent;
+  color: #e6edf5;
+}
+
+.sidebar-nav button:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-nav button.active {
+  background: #1d2a35;
+  border-color: rgba(125, 211, 199, 0.24);
+  box-shadow: inset 3px 0 0 #7dd3c7;
+}
+
+.sidebar-nav-index {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.08);
+  color: #b6c4d5;
+  font-size: 0.72rem;
+}
+
+.sidebar-nav button.active .sidebar-nav-index {
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.sidebar-nav-copy strong {
+  font-size: 0.86rem;
+}
+
+.sidebar-nav-copy small {
+  display: none;
+}
+
+.sidebar-logout {
+  border-radius: var(--radius);
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #e6edf5;
+}
+
+.content-pro {
+  min-width: 0;
+  padding: 18px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 14px;
+}
+
+.content-header-pro {
+  margin: 0;
+  padding: 16px 18px;
+  min-height: 86px;
+  align-items: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.content-header-pro h1 {
+  margin: 0.2rem 0 0.12rem;
+  color: var(--ink-strong);
+  font-size: 1.45rem;
+  line-height: 1.15;
+}
+
+.content-header-pro p {
+  max-width: 720px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.content-header-side {
+  min-width: 170px;
+  gap: 0.25rem;
+  color: var(--ink-soft);
+}
+
+.content-header-side strong {
+  color: var(--ink-strong);
+}
+
+.content-header-side small {
+  color: var(--ink-soft);
+}
+
+.content-role-chip {
+  background: var(--brand-soft);
+  border-color: #bfe5dc;
+  color: var(--brand-dark);
+}
+
+.workspace-surface {
+  min-width: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.panel,
+.card,
+.metric-card,
+.list li,
+.kanban-column,
+.os-card,
+.timeline li,
+.finance-item,
+.inventory-item,
+.user-item,
+.audit-list li,
+.detail-summary-card,
+.status-pill,
+.module-highlight-card,
+.module-mini-stat,
+.auth-spotlight,
+.auth-card-pro {
+  border-radius: var(--radius) !important;
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.panel {
+  padding: 14px;
+  gap: 0.75rem;
+}
+
+.panel-head,
+.panel-head-inline {
+  gap: 0.75rem;
+}
+
+.panel-head h4,
+.panel-head h5,
+.panel h3,
+.panel h4,
+.panel h5,
+.card h3 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.panel-head p,
+.module-hero-copy p,
+.dashboard-banner-copy p,
+.feedback,
+.field-hint {
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.module-hero,
+.workbench-pro-refined .panel.module-hero,
+.inventory-pro-refined .panel.module-hero,
+.finance-screen-pro .panel.module-hero,
+.budget-hero,
+.dashboard-banner {
+  min-height: auto;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
+  gap: 14px;
+  align-items: stretch;
+  background: #ffffff !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--line);
+}
+
+.module-hero-copy h3,
+.dashboard-banner-copy h2,
+.workbench-pro-refined .module-hero .module-hero-copy h3,
+.inventory-pro-refined .module-hero .module-hero-copy h3,
+.finance-screen-pro .module-hero .module-hero-copy h3 {
+  margin: 0.25rem 0;
+  color: var(--ink-strong) !important;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.workbench-pro-refined .module-hero .module-hero-copy p,
+.inventory-pro-refined .module-hero .module-hero-copy p,
+.finance-screen-pro .module-hero .module-hero-copy p {
+  color: var(--ink-soft) !important;
+}
+
+.module-highlight-row,
+.module-hero-side {
+  gap: 8px;
+}
+
+.module-highlight-card,
+.module-mini-stat,
+.workorders-hero .module-highlight-card,
+.workorders-hero .module-mini-stat,
+.inventory-hero .module-highlight-card,
+.inventory-hero .module-mini-stat,
+.finance-hero .module-highlight-card,
+.finance-hero .module-mini-stat,
+.workbench-pro-refined .module-hero .module-highlight-card,
+.workbench-pro-refined .module-hero .module-mini-stat,
+.inventory-pro-refined .module-hero .module-highlight-card,
+.inventory-pro-refined .module-hero .module-mini-stat,
+.finance-screen-pro .module-hero .module-highlight-card,
+.finance-screen-pro .module-hero .module-mini-stat {
+  padding: 12px;
+  background: var(--surface-subtle) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--ink) !important;
+}
+
+.module-highlight-card span,
+.module-mini-stat span,
+.module-highlight-card small,
+.module-mini-stat small {
+  color: var(--ink-soft) !important;
+}
+
+.module-highlight-card strong,
+.module-mini-stat strong {
+  color: var(--ink-strong);
+  font-size: 1.15rem;
+}
+
+.workbench-metrics,
+.module-grid,
+.dashboard-card-grid {
+  gap: 10px;
+}
+
+.metric-card,
+.card {
+  padding: 12px;
+  background: #ffffff;
+}
+
+.metric-card span,
+.card h3 {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.metric-card strong,
+.card p {
+  color: var(--ink-strong);
+  font-size: 1.28rem;
+  line-height: 1.2;
+}
+
+.metric-card.urgent strong {
+  color: var(--warning);
+}
+
+.workbench-layout,
+.inventory-layout,
+.finance-layout,
+.users-layout,
+.budget-layout {
+  gap: 12px;
+}
+
+.field-stack {
+  gap: 0.3rem;
+}
+
+.field-stack span {
+  color: #3d4a5c;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.module-form-grid,
+.module-form-grid-2,
+.details-form {
+  gap: 0.65rem;
+}
+
+.list {
+  gap: 8px;
+}
+
+.list li,
+.finance-item,
+.inventory-item,
+.budget-item,
+.user-item,
+.os-card,
+.timeline li {
+  padding: 10px;
+  background: #ffffff !important;
+}
+
+.list li:hover,
+.os-card:hover,
+.finance-item:hover,
+.inventory-item:hover,
+.budget-item:hover,
+.user-item:hover {
+  border-color: #b9c6d4;
+}
+
+.kanban-board {
+  gap: 10px;
+}
+
+.kanban-column {
+  min-width: 214px;
+  background: #f7f9fb !important;
+}
+
+.kanban-column header {
+  padding: 8px 10px;
+  background: #ffffff;
+}
+
+.kanban-column h5 {
+  color: var(--ink-strong);
+  font-size: 0.8rem;
+}
+
+.kanban-cards {
+  padding: 8px;
+  gap: 8px;
+}
+
+.os-card-top,
+.finance-item-top,
+.budget-item-top,
+.inventory-item-head,
+.user-head,
+.audit-head {
+  gap: 0.75rem;
+}
+
+.os-card p,
+.budget-item-top p,
+.finance-item-top strong,
+.inventory-item-head strong {
+  color: var(--ink-strong);
+}
+
+.os-meta,
+.os-card-meta,
+.finance-item-meta,
+.inventory-item-meta,
+.budget-item-meta {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.os-actions,
+.card-actions,
+.detail-actions,
+.chip-row,
+.inline-chip-row {
+  gap: 6px;
+}
+
+.os-actions button,
+.card-actions button,
+.detail-actions button,
+.status-quick-actions button {
+  min-height: 32px;
+  padding: 0.38rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.view-switcher,
+.status-quick-actions,
+.filters-row,
+.finance-toolbar,
+.operations-toolbar,
+.inventory-toolbar,
+.users-toolbar,
+.audit-toolbar {
+  gap: 8px;
+}
+
+.view-switcher {
+  padding: 3px;
+  border-radius: var(--radius);
+  background: #eef3f7;
+}
+
+.view-switcher button,
+.status-quick-actions button {
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border-color: transparent;
+}
+
+.view-switcher button.active,
+.status-quick-actions button.active {
+  background: #ffffff;
+  border-color: var(--line-strong);
+  color: var(--brand-dark);
+}
+
+.priority-chip,
+.inline-chip,
+.finance-type,
+.finance-status,
+.budget-status,
+.tag,
+.kanban-column span {
+  border-radius: var(--radius-sm);
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.priority-baixa,
+.priority-media,
+.priority-alta,
+.priority-urgente,
+.finance-item.receivable,
+.finance-item.payable,
+.budget-item,
+.inventory-item.low,
+.user-item.inactive {
+  border-left-width: 3px;
+}
+
+.detail-head,
+.detail-summary-card {
+  background: var(--surface-subtle) !important;
+  border-style: solid;
+}
+
+.detail-summary-grid {
+  gap: 8px;
+}
+
+.timeline ul {
+  gap: 8px;
+}
+
+.timeline li span {
+  color: var(--brand-dark);
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  font-weight: 750;
+}
+
+.feedback.success,
+.feedback.error {
+  border-radius: var(--radius);
+  padding: 0.65rem 0.75rem;
+}
+
+.feedback.success {
+  color: var(--success);
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.feedback.error {
+  color: var(--error);
+  background: #fff1f3;
+  border-color: #fecdd6;
+}
+
+.auth-shell-pro {
+  min-height: 100vh;
+  padding: 24px;
+  background: #111820;
+}
+
+.auth-stage {
+  width: min(1040px, 100%);
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 16px;
+}
+
+.auth-spotlight {
+  min-height: 520px;
+  padding: 30px;
+  align-content: space-between;
+  background: #17212b;
+  color: #f8fafc;
+}
+
+.auth-spotlight h1 {
+  max-width: 12ch;
+  margin: 0.65rem 0 0.75rem;
+  font-size: 2.8rem;
+  line-height: 1.02;
+}
+
+.auth-spotlight p {
+  max-width: 540px;
+  color: rgba(226, 232, 240, 0.78);
+}
+
+.auth-benefits {
+  gap: 10px;
+}
+
+.auth-benefit-card {
+  padding: 14px;
+  border-radius: var(--radius) !important;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.auth-card-pro {
+  padding: 24px;
+  background: #ffffff;
+}
+
+.auth-brand-block h2 {
+  font-size: 1.55rem;
+}
+
+@media (max-width: 1180px) {
+  .module-hero,
+  .workbench-pro-refined .panel.module-hero,
+  .inventory-pro-refined .panel.module-hero,
+  .finance-screen-pro .panel.module-hero,
+  .dashboard-banner {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 960px) {
+  .app-shell-pro {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-pro {
+    position: relative;
+    height: auto;
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid #1f2933;
+  }
+
+  .sidebar-nav {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .content-pro {
+    padding: 12px;
+  }
+
+  .content-header-pro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .content-header-side {
+    justify-items: start;
+  }
+
+  .auth-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-spotlight {
+    min-height: auto;
+  }
+
+  .auth-benefits {
+    grid-template-columns: 1fr;
   }
 }

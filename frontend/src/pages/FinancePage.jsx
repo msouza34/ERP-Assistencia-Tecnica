@@ -341,22 +341,19 @@ export default function FinancePage({ token, tenantId }) {
       <div className="module-hero finance-hero panel">
         <div className="module-hero-copy">
           <span className="module-hero-kicker">Financeiro DaniCell</span>
-          <h3>Fluxo financeiro mais claro para decidir rapido e operar melhor.</h3>
-          <p>
-            Centralize recebimentos, contas a pagar e ajustes em uma tela mais limpa, com foco no
-            que realmente importa para o caixa da loja.
-          </p>
+          <h3>Controle financeiro operacional.</h3>
+          <p>Entradas, saidas, vencimentos e baixas em uma tela unica.</p>
 
           <div className="module-highlight-row">
             <article className="module-highlight-card">
               <span>Saldo projetado</span>
               <strong>{formatMoney(projectedBalance)}</strong>
-              <small>Entradas em aberto menos saidas pendentes.</small>
+              <small>Receber menos pagar.</small>
             </article>
             <article className="module-highlight-card">
               <span>Vencendo agora</span>
               <strong>{summary.dueSoonEntries}</strong>
-              <small>Lancamentos com vencimento entre hoje e os proximos 3 dias.</small>
+              <small>Hoje ate 3 dias.</small>
             </article>
           </div>
         </div>
@@ -365,17 +362,17 @@ export default function FinancePage({ token, tenantId }) {
           <div className="module-mini-stat">
             <span>Registros ativos</span>
             <strong>{summary.openEntries}</strong>
-            <small>Financeiro aguardando acao ou baixa.</small>
+            <small>Aguardando baixa.</small>
           </div>
           <div className="module-mini-stat">
             <span>Atrasados</span>
             <strong>{summary.overdueEntries}</strong>
-            <small>Itens em aberto que passaram do vencimento.</small>
+            <small>Passaram do vencimento.</small>
           </div>
           <div className="module-mini-stat">
             <span>Receber em aberto</span>
             <strong>{formatMoney(summary.totalReceivable)}</strong>
-            <small>Valor ainda esperado para entrada de caixa.</small>
+            <small>Entrada prevista.</small>
           </div>
         </div>
       </div>
@@ -406,8 +403,8 @@ export default function FinancePage({ token, tenantId }) {
           <div className="panel-head">
             <div>
               <span className="panel-kicker">Novo lancamento</span>
-              <h4>Registrar conta com rapidez</h4>
-              <p>Preencha somente o essencial e acompanhe o restante pela coluna central.</p>
+              <h4>Registrar conta</h4>
+              <p>Descricao, tipo, valor e vencimento.</p>
             </div>
           </div>
 
@@ -475,7 +472,7 @@ export default function FinancePage({ token, tenantId }) {
           <div className="panel-head panel-head-inline">
             <div>
               <span className="panel-kicker">Fluxo financeiro</span>
-              <h4>Visual do caixa e dos vencimentos</h4>
+              <h4>Contas e vencimentos</h4>
               <p>
                 {filteredItems.length} de {summary.totalEntries} registros visiveis neste momento.
               </p>
@@ -505,7 +502,7 @@ export default function FinancePage({ token, tenantId }) {
             {filteredItems.map((item) => (
               <li
                 key={item.id}
-                className={`finance-item ${item.type === "PAYABLE" ? "payable" : "receivable"} ${item.paid ? "paid" : "open"}`}
+                className={`finance-item ${item.type === "PAYABLE" ? "payable" : "receivable"} ${item.paid ? "paid" : "open"} ${selectedId === item.id ? "selected" : ""}`}
               >
                 <div className="finance-item-top">
                   <div>
@@ -551,8 +548,8 @@ export default function FinancePage({ token, tenantId }) {
           <div className="panel-head">
             <div>
               <span className="panel-kicker">Edicao</span>
-              <h4>Painel do lancamento</h4>
-              <p>Abra um item da coluna central para ajustar valor, vencimento ou status.</p>
+              <h4>Detalhes do lancamento</h4>
+              <p>Valor, vencimento, tipo e status.</p>
             </div>
           </div>
 

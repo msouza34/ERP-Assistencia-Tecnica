@@ -1,8 +1,13 @@
 package com.operonix.erp.modules.budget.interfaces;
 
+import com.operonix.erp.config.AppProperties;
 import com.operonix.erp.modules.budget.domain.Budget;
 import com.operonix.erp.modules.budget.domain.BudgetRepository;
 import com.operonix.erp.modules.budget.domain.BudgetStatus;
+import com.operonix.erp.modules.workorder.domain.WorkOrder;
+import com.operonix.erp.modules.workorder.domain.WorkOrderPriority;
+import com.operonix.erp.modules.workorder.domain.WorkOrderStatus;
+import com.operonix.erp.modules.workorder.infrastructure.WorkOrderRepository;
 import com.operonix.erp.shared.audit.application.AuditService;
 import com.operonix.erp.shared.tenant.TenantContext;
 import jakarta.validation.Valid;
@@ -29,6 +34,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
@@ -67,11 +73,20 @@ public class BudgetController {
     private static final float PDF_LOGO_MAX_HEIGHT = 58f;
 
     private final BudgetRepository budgetRepository;
+    private final WorkOrderRepository workOrderRepository;
     private final AuditService auditService;
+    private final AppProperties appProperties;
 
-    public BudgetController(BudgetRepository budgetRepository, AuditService auditService) {
+    public BudgetController(
+        BudgetRepository budgetRepository,
+        WorkOrderRepository workOrderRepository,
+        AuditService auditService,
+        AppProperties appProperties
+    ) {
         this.budgetRepository = budgetRepository;
+        this.workOrderRepository = workOrderRepository;
         this.auditService = auditService;
+        this.appProperties = appProperties;
     }
 
     @GetMapping
@@ -269,6 +284,40 @@ public class BudgetController {
         return ResponseEntity.ok(Map.of("url", url, "message", message, "pdfFileName", pdfFileName));
     }
 
+    @PostMapping("/{id}/convert-to-work-order")
+    public ResponseEntity<ConvertedWorkOrderResponse> convertToWorkOrder(@PathVariable Long id) {
+        Budget budget = requireBudget(id);
+        if (budget.getStatus() != BudgetStatus.APROVADO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Apenas orcamentos aprovados podem virar OS.");
+        }
+
+        WorkOrder existing = findConvertedWorkOrder(budget);
+        if (existing != null) {
+            return ResponseEntity.ok(toConvertedResponse(existing, false));
+        }
+
+        WorkOrder workOrder = new WorkOrder();
+        workOrder.setCustomerName(budget.getCustomerName());
+        workOrder.setCustomerPhone(budget.getCustomerPhone());
+        workOrder.setEquipment(budget.getEquipment());
+        workOrder.setDefectDescription(budget.getProblemDescription());
+        workOrder.setNotes(buildConvertedNotes(budget));
+        workOrder.setPriority(WorkOrderPriority.MEDIA);
+        workOrder.setServiceCost(budget.getTotalAmount());
+        workOrder.setStatus(WorkOrderStatus.ENTRADA);
+
+        WorkOrder saved = workOrderRepository.save(workOrder);
+        auditService.record(
+            "BUDGET",
+            "CONVERT_TO_WORK_ORDER",
+            "WORK_ORDER",
+            String.valueOf(saved.getId()),
+            "Orcamento convertido em OS: " + budget.getBudgetNumber() + " -> " + saved.getOrderNumber()
+        );
+
+        return ResponseEntity.ok(toConvertedResponse(saved, true));
+    }
+
     private ResponseEntity<ByteArrayResource> fileResponse(
         byte[] content,
         MediaType mediaType,
@@ -292,6 +341,7 @@ public class BudgetController {
         List<PdfLine> lines = new ArrayList<>();
 
         lines.add(new PdfLine("DaniCell Assistencia Tecnica", true, 16f));
+        addBusinessInfoLines(lines);
         lines.add(new PdfLine("Orcamento " + fallback(budget.getBudgetNumber(), "Sem numero"), true, 14f));
         lines.add(new PdfLine("Documento comercial para aprovacao de servico.", false, 10.5f));
         lines.add(new PdfLine("", false, 10f));
@@ -485,9 +535,29 @@ public class BudgetController {
             document.addPage(page);
             stream = new PDPageContentStream(document, page);
             pageNumber++;
+            drawWatermark();
             drawPageHeader();
             drawPageFooter();
             cursorY = page.getMediaBox().getHeight() - PDF_TOP_MARGIN - PDF_HEADER_HEIGHT;
+        }
+
+        private void drawWatermark() throws IOException {
+            if (logoImage == null) {
+                return;
+            }
+
+            float pageWidth = page.getMediaBox().getWidth();
+            float pageHeight = page.getMediaBox().getHeight();
+            float[] logoSize = fitWithin(logoImage.getWidth(), logoImage.getHeight(), pageWidth * 0.82f, pageHeight * 0.46f);
+            float logoX = (pageWidth - logoSize[0]) / 2f;
+            float logoY = (pageHeight - logoSize[1]) / 2f - 18f;
+
+            PDExtendedGraphicsState state = new PDExtendedGraphicsState();
+            state.setNonStrokingAlphaConstant(0.06f);
+            stream.saveGraphicsState();
+            stream.setGraphicsStateParameters(state);
+            stream.drawImage(logoImage, logoX, logoY, logoSize[0], logoSize[1]);
+            stream.restoreGraphicsState();
         }
 
         private void drawPageHeader() throws IOException {
@@ -521,6 +591,16 @@ public class BudgetController {
             stream.newLineAtOffset(textStartX, headerBottom + PDF_HEADER_HEIGHT - 45f);
             stream.showText("Orcamento tecnico com layout profissional para aprovacao de servico.");
             stream.endText();
+
+            String businessInfo = businessInfoText();
+            if (StringUtils.hasText(businessInfo)) {
+                stream.beginText();
+                stream.setNonStrokingColor(214, 222, 233);
+                stream.setFont(PDType1Font.HELVETICA, 8.5f);
+                stream.newLineAtOffset(textStartX, headerBottom + PDF_HEADER_HEIGHT - 60f);
+                stream.showText(sanitizePdfText(businessInfo));
+                stream.endText();
+            }
         }
 
         private void drawPageFooter() throws IOException {
@@ -681,6 +761,58 @@ public class BudgetController {
         return StringUtils.hasText(value) ? value : fallback;
     }
 
+    private void addBusinessInfoLines(List<PdfLine> lines) {
+        String businessInfo = businessInfoText();
+        if (StringUtils.hasText(businessInfo)) {
+            lines.add(new PdfLine(businessInfo, false, 9.5f));
+        }
+    }
+
+    private String businessInfoText() {
+        List<String> parts = new ArrayList<>();
+        if (StringUtils.hasText(appProperties.getDocument().getCnpj())) {
+            parts.add("CNPJ: " + appProperties.getDocument().getCnpj().trim());
+        }
+        if (StringUtils.hasText(appProperties.getDocument().getCommercialPhone())) {
+            parts.add("Comercial: " + appProperties.getDocument().getCommercialPhone().trim());
+        }
+        return String.join(" | ", parts);
+    }
+
+    private WorkOrder findConvertedWorkOrder(Budget budget) {
+        String marker = convertedBudgetMarker(budget);
+        return workOrderRepository.findByTenantIdOrderByUpdatedAtDesc(TenantContext.getTenantId())
+            .stream()
+            .filter(item -> item.getNotes() != null && item.getNotes().contains(marker))
+            .findFirst()
+            .orElse(null);
+    }
+
+    private String buildConvertedNotes(Budget budget) {
+        List<String> notes = new ArrayList<>();
+        notes.add(convertedBudgetMarker(budget));
+        if (StringUtils.hasText(budget.getItemsDescription())) {
+            notes.add("Itens e servicos aprovados: " + budget.getItemsDescription().trim());
+        }
+        if (StringUtils.hasText(budget.getNotes())) {
+            notes.add("Observacoes do orcamento: " + budget.getNotes().trim());
+        }
+        return String.join("\n\n", notes);
+    }
+
+    private String convertedBudgetMarker(Budget budget) {
+        return "Origem: Orcamento " + fallback(budget.getBudgetNumber(), String.valueOf(budget.getId()));
+    }
+
+    private ConvertedWorkOrderResponse toConvertedResponse(WorkOrder workOrder, boolean created) {
+        return new ConvertedWorkOrderResponse(
+            workOrder.getId(),
+            workOrder.getOrderNumber(),
+            workOrder.getStatus().name(),
+            created
+        );
+    }
+
     public record CreateBudgetRequest(
         @NotBlank String customerName,
         String customerPhone,
@@ -743,6 +875,14 @@ public class BudgetController {
         long expired,
         BigDecimal approvedTotal,
         BigDecimal pipelineTotal
+    ) {
+    }
+
+    public record ConvertedWorkOrderResponse(
+        Long id,
+        String orderNumber,
+        String status,
+        boolean created
     ) {
     }
 }

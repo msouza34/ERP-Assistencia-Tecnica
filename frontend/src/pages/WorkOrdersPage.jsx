@@ -29,6 +29,11 @@ function formatDate(value) {
     return "-";
   }
 
+  const parts = String(value).split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
@@ -72,6 +77,10 @@ function eventTypeLabel(value) {
   return label(value);
 }
 
+function canShareReceipt(item) {
+  return item?.status === "FINALIZADO" || item?.status === "ENTREGUE";
+}
+
 export default function WorkOrdersPage({ token, tenantId, role }) {
   const [items, setItems] = useState([]);
   const [timeline, setTimeline] = useState([]);
@@ -80,7 +89,7 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
-  const [viewMode, setViewMode] = useState("kanban");
+  const [viewMode, setViewMode] = useState("list");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -406,6 +415,11 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
     setError("");
     setSuccess("");
 
+    if (!canShareReceipt(item)) {
+      setError("A OS so pode ser enviada ao cliente quando estiver finalizada ou entregue.");
+      return;
+    }
+
     try {
       const [data, pdfBlob] = await Promise.all([
         apiRequest(`/api/v1/work-orders/${item.id}/whatsapp-link`, {
@@ -458,22 +472,19 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
       <div className="module-hero workorders-hero panel">
         <div className="module-hero-copy">
           <span className="module-hero-kicker">Ordem de servico</span>
-          <h3>Operacao de OS com leitura executiva e execucao mais profissional.</h3>
-          <p>
-            Acompanhe entrada, bancada, aprovacao e entrega em um painel mais refinado, com acesso
-            rapido ao documento profissional da DaniCell e a linha do tempo do atendimento.
-          </p>
+          <h3>Fila operacional de atendimento.</h3>
+          <p>Entrada, bancada, aprovacao, finalizacao e entrega em um fluxo unico.</p>
 
           <div className="module-highlight-row">
             <article className="module-highlight-card">
               <span>OS em aberto</span>
               <strong>{metrics?.open ?? 0}</strong>
-              <small>Fluxo ativo entre entrada, analise, reparo e finalizacao.</small>
+              <small>Em execucao ou aguardando decisao.</small>
             </article>
             <article className="module-highlight-card">
               <span>Ticket medio</span>
               <strong>{formatMoney(metrics?.averageTicket)}</strong>
-              <small>Base media dos servicos processados.</small>
+              <small>Media dos servicos registrados.</small>
             </article>
           </div>
         </div>
@@ -482,17 +493,17 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
           <div className="module-mini-stat">
             <span>Urgentes</span>
             <strong>{metrics?.urgent ?? 0}</strong>
-            <small>Ordens que pedem prioridade da equipe.</small>
+            <small>Prioridade maxima.</small>
           </div>
           <div className="module-mini-stat">
             <span>Lista atual</span>
             <strong>{items.length}</strong>
-            <small>Resultado conforme filtros e busca aplicados.</small>
+            <small>Conforme filtros.</small>
           </div>
           <div className="module-mini-stat">
             <span>Status filtrado</span>
             <strong>{statusFilter === "ALL" ? "Todos" : label(statusFilter)}</strong>
-            <small>Leitura imediata do recorte operacional exibido.</small>
+            <small>Recorte atual.</small>
           </div>
         </div>
       </div>
@@ -523,8 +534,8 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
           <div className="panel-head">
             <div>
               <span className="panel-kicker">Nova OS</span>
-              <h4>Abrir atendimento com padrao DaniCell</h4>
-              <p>Cadastro direto, organizado e pronto para o documento profissional.</p>
+              <h4>Abrir atendimento</h4>
+              <p>Dados minimos para iniciar a OS.</p>
             </div>
           </div>
 
@@ -634,7 +645,7 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
           <div className="panel-head panel-head-inline">
             <div>
               <span className="panel-kicker">Operacao</span>
-              <h4>Fila de atendimento e andamento da bancada</h4>
+              <h4>Fila de atendimento</h4>
               <p>{items.length} ordens retornadas para a consulta atual.</p>
             </div>
             <div className="view-switcher">
@@ -689,7 +700,7 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
                   </header>
                   <div className="kanban-cards">
                     {kanbanColumns[status]?.map((item) => (
-                      <article key={item.id} className={`os-card os-card-pro priority-${(item.priority || "MEDIA").toLowerCase()}`}>
+                      <article key={item.id} className={`os-card os-card-pro priority-${(item.priority || "MEDIA").toLowerCase()} ${selectedId === item.id ? "selected" : ""}`}>
                         <div className="os-card-top">
                           <strong>{item.orderNumber}</strong>
                           <span className={`priority-chip priority-${(item.priority || "MEDIA").toLowerCase()}`}>
@@ -725,7 +736,7 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
           ) : (
             <ul className="list advanced-list advanced-list-pro">
               {items.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className={selectedId === item.id ? "selected" : ""}>
                   <div className="os-line os-line-pro">
                     <div className="os-line-header">
                       <strong>{item.orderNumber}</strong>
@@ -751,7 +762,7 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
                     <button type="button" onClick={() => downloadDocument(item)}>Baixar PDF</button>
                     {item.hasAttachment && <button type="button" onClick={() => viewAttachment(item)}>Visualizar anexo</button>}
                     {item.hasAttachment && <button type="button" onClick={() => downloadAttachment(item)}>Baixar anexo</button>}
-                    <button type="button" onClick={() => shareOnWhatsApp(item)}>WhatsApp</button>
+                    <button type="button" onClick={() => shareOnWhatsApp(item)} disabled={!canShareReceipt(item)}>WhatsApp</button>
                     {canDelete && (
                       <button type="button" className="button-danger" onClick={() => deleteWorkOrder(item)}>
                         Excluir
@@ -769,8 +780,8 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
           <div className="panel-head">
             <div>
               <span className="panel-kicker">Painel da OS</span>
-              <h4>Detalhes, status e documento profissional</h4>
-              <p>Abra uma ordem para editar a operacao e acompanhar a timeline do atendimento.</p>
+              <h4>Detalhes da OS</h4>
+              <p>Status, documento, recibo e linha do tempo.</p>
             </div>
           </div>
 
@@ -892,7 +903,7 @@ export default function WorkOrdersPage({ token, tenantId, role }) {
                 {selectedOrder.hasAttachment && (
                   <button type="button" onClick={() => downloadAttachment(selectedOrder)}>Baixar anexo</button>
                 )}
-                <button type="button" onClick={() => shareOnWhatsApp(selectedOrder)}>Enviar WhatsApp</button>
+                <button type="button" onClick={() => shareOnWhatsApp(selectedOrder)} disabled={!canShareReceipt(selectedOrder)}>Enviar WhatsApp</button>
                 {canDelete && (
                   <button type="button" className="button-danger" onClick={() => deleteWorkOrder(selectedOrder)}>
                     Excluir OS

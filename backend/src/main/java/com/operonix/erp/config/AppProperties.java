@@ -11,6 +11,7 @@ public class AppProperties {
     private final Tenant tenant = new Tenant();
     private final Auth auth = new Auth();
     private final Security security = new Security();
+    private final Document document = new Document();
 
     public String getBaseUrl() {
         return baseUrl;
@@ -38,6 +39,10 @@ public class AppProperties {
 
     public Security getSecurity() {
         return security;
+    }
+
+    public Document getDocument() {
+        return document;
     }
 
     public static class Cors {
@@ -129,6 +134,27 @@ public class AppProperties {
 
         public Login getLogin() {
             return login;
+        }
+    }
+
+    public static class Document {
+        private String cnpj;
+        private String commercialPhone;
+
+        public String getCnpj() {
+            return cnpj;
+        }
+
+        public void setCnpj(String cnpj) {
+            this.cnpj = cnpj;
+        }
+
+        public String getCommercialPhone() {
+            return commercialPhone;
+        }
+
+        public void setCommercialPhone(String commercialPhone) {
+            this.commercialPhone = commercialPhone;
         }
     }
 
